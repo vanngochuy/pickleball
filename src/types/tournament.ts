@@ -59,6 +59,13 @@ export interface GroupStanding {
   advancing: boolean; // Top 2 advance
 }
 
+export interface RefereeAccount {
+  id: string;
+  name: string;
+  court: string;
+  phone?: string;
+}
+
 export interface TournamentConfig {
   title: string;
   edition: string;
@@ -68,5 +75,5 @@ export interface TournamentConfig {
   domain: string;
   targetPoints: number; // 11
   winByTwo: boolean;
-  refereePin: string; // default '1234'
+  refereePin: string; // Secure PIN for referee activation
 }

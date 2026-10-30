@@ -19,6 +19,7 @@ import confetti from 'canvas-confetti';
 interface RefereeScorerModalProps {
   match: Match | null;
   teams: Team[];
+  refereeName?: string;
   onClose: () => void;
   onSaveMatch: (updatedMatch: Match) => void;
 }
@@ -26,6 +27,7 @@ interface RefereeScorerModalProps {
 export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
   match,
   teams,
+  refereeName,
   onClose,
   onSaveMatch,
 }) => {
@@ -187,6 +189,7 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
       serverNumber,
       servingTeamId: servingTeam === 'team1' ? match.team1Id : match.team2Id,
       refereeNotes,
+      refereeName: refereeName || match.refereeName,
     };
 
     sounds.playWhistle();
@@ -206,6 +209,7 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
       serverNumber,
       servingTeamId: servingTeam === 'team1' ? match.team1Id : match.team2Id,
       refereeNotes,
+      refereeName: refereeName || match.refereeName,
     };
     triggerHaptic(30);
     onSaveMatch(updatedMatch);
@@ -233,9 +237,11 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
               <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-400 text-slate-950 uppercase shrink-0 font-mono">
                 {match.court}
               </span>
-              <span className="text-[10px] text-slate-400 hidden sm:inline">
-                (Chạm {targetPoints} điểm)
-              </span>
+              {(refereeName || match.refereeName) && (
+                <span className="text-[10px] text-amber-300 font-semibold truncate hidden sm:inline">
+                  • TT: {refereeName || match.refereeName}
+                </span>
+              )}
             </div>
           </div>
 

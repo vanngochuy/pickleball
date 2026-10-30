@@ -1,6 +1,6 @@
 import React from 'react';
-import { Match, Team } from '../types/tournament';
-import { ShieldCheck, PlayCircle, Clock, CheckCircle2, UserCheck, Flame, Filter } from 'lucide-react';
+import { Match, Team, RefereeAccount } from '../types/tournament';
+import { ShieldCheck, PlayCircle, Clock, CheckCircle2, UserCheck, Flame, Filter, Users } from 'lucide-react';
 import { GROUP_CONFIGS } from '../data/initialTournamentData';
 
 interface RefereePortalViewProps {
@@ -11,6 +11,8 @@ interface RefereePortalViewProps {
   setAssignedCourt: (court: string) => void;
   refereeName: string;
   onOpenRefereeSettings: () => void;
+  referees?: RefereeAccount[];
+  onSelectReferee?: (ref: RefereeAccount) => void;
 }
 
 export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
@@ -21,6 +23,8 @@ export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
   setAssignedCourt,
   refereeName,
   onOpenRefereeSettings,
+  referees = [],
+  onSelectReferee,
 }) => {
   const getTeamName = (teamId: string, placeholder?: string) => {
     if (!teamId) return placeholder || 'Chờ kết quả';
@@ -52,49 +56,88 @@ export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Header Bar */}
-      <div className="bg-slate-900 text-white p-5 rounded-3xl border border-slate-800 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shadow-md">
-            <ShieldCheck className="w-7 h-7" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-black font-display tracking-tight uppercase">
-                BÀN ĐIỀU HÀNH TRỌNG TÀI
-              </h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-slate-950 uppercase">
-                {assignedCourt}
-              </span>
+      <div className="bg-slate-900 text-white p-5 rounded-3xl border border-slate-800 shadow-lg space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shadow-md shrink-0">
+              <ShieldCheck className="w-7 h-7" />
             </div>
-            <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
-              <span>Trọng tài: <strong className="text-white">{refereeName || 'Chưa đặt tên'}</strong></span>
-              <span>·</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-black font-display tracking-tight uppercase">
+                  BÀN ĐIỀU HÀNH TRỌNG TÀI
+                </h2>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-slate-950 uppercase">
+                  {assignedCourt}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                <span>Đang trực: <strong className="text-white">{refereeName || 'Chưa đặt tên'}</strong></span>
+                <span>·</span>
+                <button
+                  onClick={onOpenRefereeSettings}
+                  className="text-amber-400 hover:underline font-semibold"
+                >
+                  Cài đặt & Đổi Trọng Tài
+                </button>
+              </p>
+            </div>
+          </div>
+
+          {/* Court Filter Tabs */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-800 rounded-2xl self-start sm:self-auto overflow-x-auto max-w-full">
+            {courts.map((court) => (
               <button
-                onClick={onOpenRefereeSettings}
-                className="text-amber-400 hover:underline font-semibold"
+                key={court}
+                onClick={() => setAssignedCourt(court)}
+                className={`px-3 py-1.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all ${
+                  assignedCourt === court
+                    ? 'bg-amber-400 text-slate-950 shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
               >
-                Cài đặt & Mã PIN
+                {court}
               </button>
-            </p>
+            ))}
           </div>
         </div>
 
-        {/* Court Filter Tabs */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-800 rounded-2xl self-start sm:self-auto overflow-x-auto max-w-full">
-          {courts.map((court) => (
-            <button
-              key={court}
-              onClick={() => setAssignedCourt(court)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all ${
-                assignedCourt === court
-                  ? 'bg-amber-400 text-slate-950 shadow-xs'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              {court}
-            </button>
-          ))}
-        </div>
+        {/* 3 Referees Quick-Switcher Strip */}
+        {referees.length > 0 && (
+          <div className="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5 shrink-0">
+              <Users className="w-3.5 h-3.5 text-amber-400" />
+              <span>3 Trọng Tài Trực:</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-1 max-w-2xl">
+              {referees.map((ref) => {
+                const isActive = refereeName === ref.name;
+                return (
+                  <button
+                    key={ref.id}
+                    onClick={() => onSelectReferee && onSelectReferee(ref)}
+                    className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-all ${
+                      isActive
+                        ? 'bg-amber-400 text-slate-950 shadow-md ring-2 ring-amber-300'
+                        : 'bg-slate-800/90 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700/50'
+                    }`}
+                  >
+                    <span className="truncate">{ref.name}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded font-black uppercase shrink-0 ml-1.5 ${
+                        isActive
+                          ? 'bg-slate-950 text-amber-300'
+                          : 'bg-slate-900 text-slate-400'
+                      }`}
+                    >
+                      {ref.court}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Featured: Current Active Match on this Court */}

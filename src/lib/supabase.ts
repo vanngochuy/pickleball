@@ -1,11 +1,12 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Match, Team, TournamentConfig } from '../types/tournament';
+import { Match, Team, TournamentConfig, RefereeAccount } from '../types/tournament';
 
 const STORAGE_KEY_URL = 'pickleball_supabase_url';
 const STORAGE_KEY_ANON_KEY = 'pickleball_supabase_anon_key';
 const STORAGE_KEY_MATCHES = 'pickleball_matches_v4';
 const STORAGE_KEY_TEAMS = 'pickleball_teams_v4';
 const STORAGE_KEY_CONFIG = 'pickleball_config_v4';
+const STORAGE_KEY_REFEREES = 'pickleball_referees_v4';
 
 let clientInstance: SupabaseClient | null = null;
 
@@ -139,6 +140,22 @@ export function loadLocalConfig(): TournamentConfig | null {
 export function saveLocalConfig(config: TournamentConfig) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
+}
+
+export function loadLocalReferees(): RefereeAccount[] | null {
+  if (typeof window === 'undefined') return null;
+  const raw = localStorage.getItem(STORAGE_KEY_REFEREES);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as RefereeAccount[];
+  } catch {
+    return null;
+  }
+}
+
+export function saveLocalReferees(referees: RefereeAccount[]) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(STORAGE_KEY_REFEREES, JSON.stringify(referees));
 }
 
 // Sync to Supabase

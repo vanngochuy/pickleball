@@ -1,4 +1,4 @@
-import { Team, Match, TournamentConfig, GroupLetter } from '../types/tournament';
+import { Team, Match, TournamentConfig, GroupLetter, RefereeAccount } from '../types/tournament';
 
 export const TOURNAMENT_CONFIG: TournamentConfig = {
   title: 'GIẢI PICKLEBALL PHONG TRÀO LẦN THỨ IV',
@@ -11,6 +11,13 @@ export const TOURNAMENT_CONFIG: TournamentConfig = {
   winByTwo: true,
   refereePin: '1234',
 };
+
+// 3 tài khoản trọng tài mặc định (có thể điều chỉnh theo thực tế)
+export const DEFAULT_REFEREES: RefereeAccount[] = [
+  { id: 'ref_1', name: 'Lê Văn Đông', court: 'Sân 1' },
+  { id: 'ref_2', name: 'Phan Xuân Hào', court: 'Sân 2' },
+  { id: 'ref_3', name: 'Nguyễn Văn A', court: 'Sân 3' },
+];
 
 // Exact 15 teams from the official tournament bracket poster
 export const INITIAL_TEAMS: Team[] = [

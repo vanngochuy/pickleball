@@ -2,15 +2,18 @@ import React, { useState, useEffect } from 'react';
 import {
   INITIAL_TEAMS,
   generateInitialMatches,
-  TOURNAMENT_CONFIG
+  TOURNAMENT_CONFIG,
+  DEFAULT_REFEREES
 } from './data/initialTournamentData';
-import { Team, Match } from './types/tournament';
+import { Team, Match, RefereeAccount } from './types/tournament';
 import { autoAdvanceBracket } from './lib/tournamentUtils';
 import {
   loadLocalMatches,
   saveLocalMatches,
   loadLocalTeams,
   saveLocalTeams,
+  loadLocalReferees,
+  saveLocalReferees,
   syncMatchToSupabase,
   fetchMatchesFromSupabase,
   getSupabaseClient
@@ -58,11 +61,22 @@ export default function App() {
     return getFullCompletedScenario();
   });
 
+  // 3 official referee accounts (adjustable)
+  const [referees, setReferees] = useState<RefereeAccount[]>(() => {
+    return loadLocalReferees() || DEFAULT_REFEREES;
+  });
+
   const [activeTab, setActiveTab] = useState<'groups' | 'schedule' | 'bracket' | 'rules' | 'referee_desk'>('groups');
   const [selectedMatchForScorer, setSelectedMatchForScorer] = useState<Match | null>(null);
-  const [isRefereeMode, setIsRefereeMode] = useState<boolean>(true); // Enabled by default for easy tournament administration
-  const [assignedCourt, setAssignedCourt] = useState<string>('Tất cả');
-  const [refereeName, setRefereeName] = useState<string>('Trọng tài chính');
+  const [isRefereeMode, setIsRefereeMode] = useState<boolean>(true); // Enabled by default for tournament administration
+  const [assignedCourt, setAssignedCourt] = useState<string>(() => {
+    const list = loadLocalReferees() || DEFAULT_REFEREES;
+    return list[0]?.court || 'Sân 1';
+  });
+  const [refereeName, setRefereeName] = useState<string>(() => {
+    const list = loadLocalReferees() || DEFAULT_REFEREES;
+    return list[0]?.name || 'Lê Văn Đông';
+  });
   const [showRefereeModal, setShowRefereeModal] = useState<boolean>(false);
   const [showSupabaseModal, setShowSupabaseModal] = useState<boolean>(false);
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
@@ -76,6 +90,10 @@ export default function App() {
   useEffect(() => {
     saveLocalTeams(teams);
   }, [teams]);
+
+  useEffect(() => {
+    saveLocalReferees(referees);
+  }, [referees]);
 
   // Initial cloud sync check if Supabase is configured
   useEffect(() => {
@@ -192,6 +210,11 @@ export default function App() {
             setAssignedCourt={setAssignedCourt}
             refereeName={refereeName}
             onOpenRefereeSettings={() => setShowRefereeModal(true)}
+            referees={referees}
+            onSelectReferee={(ref) => {
+              setRefereeName(ref.name);
+              setAssignedCourt(ref.court);
+            }}
           />
         )}
 
@@ -297,6 +320,7 @@ export default function App() {
         <RefereeScorerModal
           match={selectedMatchForScorer}
           teams={teams}
+          refereeName={refereeName}
           onClose={() => setSelectedMatchForScorer(null)}
           onSaveMatch={handleSaveMatch}
         />
@@ -312,6 +336,8 @@ export default function App() {
           setAssignedCourt={setAssignedCourt}
           refereeName={refereeName}
           setRefereeName={setRefereeName}
+          referees={referees}
+          setReferees={setReferees}
         />
       )}
 
