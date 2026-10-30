@@ -64,7 +64,9 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   };
 
   const liveMatches = useMemo(() => {
-    return matches.filter((m) => m.status === 'live');
+    return matches.filter(
+      (m) => m.status === 'live' || (Boolean(m.lockedByRefereeName) && m.status !== 'completed')
+    );
   }, [matches]);
 
   const filteredMatches = useMemo(() => {
@@ -308,8 +310,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
           </div>
         ) : (
           filteredMatches.map((m) => {
-            const isLive = m.status === 'live';
             const isCompleted = m.status === 'completed';
+            const isLive = m.status === 'live' || (Boolean(m.lockedByRefereeName) && !isCompleted);
             const team1Name = getTeamName(m.team1Id, m.team1Placeholder);
             const team2Name = getTeamName(m.team2Id, m.team2Placeholder);
             const team1Code = getTeamCode(m.team1Id);
@@ -556,7 +558,17 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               </p>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => {
+                  const targetMatch = blockedLockAlert.match;
+                  setBlockedLockAlert(null);
+                  onOpenMatchScorer(targetMatch);
+                }}
+                className="px-3.5 py-2 text-xs font-bold text-sky-700 hover:bg-sky-50 rounded-xl transition-colors border border-sky-200"
+              >
+                Xem Trực Tiếp (Chỉ Xem)
+              </button>
               {onForceUnlockMatch && (
                 <button
                   onClick={() => {

@@ -102,6 +102,7 @@ export default function App() {
           const next = prev.map((m) => (m.id === event.match.id ? event.match : m));
           return autoAdvanceBracket(next, teams);
         });
+        setSelectedMatchForScorer((curr) => (curr && curr.id === event.match.id ? event.match : curr));
       } else if (event.type === 'BATCH_SYNC') {
         setMatches(autoAdvanceBracket(event.matches, teams));
       } else if (event.type === 'MATCH_LOCKED') {
@@ -118,6 +119,18 @@ export default function App() {
               : m
           )
         );
+        setSelectedMatchForScorer((curr) => {
+          if (curr && curr.id === event.matchId) {
+            return {
+              ...curr,
+              lockedByRefereeName: event.refereeName,
+              lockedByCourt: event.court,
+              lockedAt: event.timestamp,
+              status: curr.status === 'pending' ? 'live' : curr.status,
+            };
+          }
+          return curr;
+        });
       } else if (event.type === 'MATCH_UNLOCKED') {
         setMatches((prev) =>
           prev.map((m) =>
@@ -131,6 +144,17 @@ export default function App() {
               : m
           )
         );
+        setSelectedMatchForScorer((curr) => {
+          if (curr && curr.id === event.matchId) {
+            return {
+              ...curr,
+              lockedByRefereeName: undefined,
+              lockedByCourt: undefined,
+              lockedAt: undefined,
+            };
+          }
+          return curr;
+        });
       }
     });
 
@@ -152,17 +176,52 @@ export default function App() {
     saveLocalReferees(referees);
   }, [referees]);
 
-  // Initial cloud sync check if Supabase is configured
+  // Cross-device periodic sync if Supabase is configured
   useEffect(() => {
     const client = getSupabaseClient();
-    if (client) {
-      fetchMatchesFromSupabase().then((cloudMatches) => {
+    if (!client) return;
+
+    fetchMatchesFromSupabase().then((cloudMatches) => {
+      if (cloudMatches && cloudMatches.length > 0) {
+        setMatches((prev) => autoAdvanceBracket(cloudMatches, teams));
+      }
+    });
+
+    const timer = setInterval(async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      try {
+        const cloudMatches = await fetchMatchesFromSupabase();
         if (cloudMatches && cloudMatches.length > 0) {
-          setMatches(cloudMatches);
+          setMatches((prev) => {
+            let hasChange = false;
+            const updated = prev.map((local) => {
+              const remote = cloudMatches.find((rm) => rm.id === local.id);
+              if (!remote) return local;
+              if (
+                remote.score1 !== local.score1 ||
+                remote.score2 !== local.score2 ||
+                remote.status !== local.status ||
+                remote.lockedByRefereeName !== local.lockedByRefereeName ||
+                remote.winnerId !== local.winnerId
+              ) {
+                hasChange = true;
+                return remote;
+              }
+              return local;
+            });
+            if (hasChange) {
+              return autoAdvanceBracket(updated, teams);
+            }
+            return prev;
+          });
         }
-      });
-    }
-  }, []);
+      } catch {
+        // ignore background poll error
+      }
+    }, 2500);
+
+    return () => clearInterval(timer);
+  }, [teams]);
 
   // Open Scorer / Match Viewer
   const handleOpenScorerForMatch = (match: Match) => {
@@ -176,7 +235,17 @@ export default function App() {
       setSelectedMatchForScorer(match);
       return;
     }
+    // If match is actively locked by another referee, do not steal lock; open in read-only mode
+    if (!isAdminLoggedIn && isRefereeMode && syncManager.isMatchLockedByOther(match, refereeName)) {
+      setSelectedMatchForScorer(match);
+      return;
+    }
+
     const locked = syncManager.acquireMatchLock(match, refereeName, assignedCourt);
+    setMatches((prev) => {
+      const next = prev.map((m) => (m.id === locked.id ? locked : m));
+      return autoAdvanceBracket(next, teams);
+    });
     setSelectedMatchForScorer(locked);
   };
 

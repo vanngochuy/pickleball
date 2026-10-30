@@ -364,7 +364,17 @@ export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
               </p>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => {
+                  const targetMatch = blockedLockAlert.match;
+                  setBlockedLockAlert(null);
+                  onOpenMatchScorer(targetMatch);
+                }}
+                className="px-3.5 py-2 text-xs font-bold text-sky-700 hover:bg-sky-50 rounded-xl transition-colors border border-sky-200"
+              >
+                Xem Trực Tiếp (Chỉ Xem)
+              </button>
               {onForceUnlockMatch && (
                 <button
                   onClick={() => {

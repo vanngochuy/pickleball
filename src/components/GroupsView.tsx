@@ -90,7 +90,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
           const standings = calculateGroupStandings(grpLetter, teams, matches);
           const groupMatches = matches.filter((m) => m.groupId === grpLetter);
           const completedCount = groupMatches.filter((m) => m.status === 'completed').length;
-          const liveMatch = groupMatches.find((m) => m.status === 'live');
+          const liveMatch = groupMatches.find((m) => m.status === 'live' || (Boolean(m.lockedByRefereeName) && m.status !== 'completed'));
           const nextPending = groupMatches.find((m) => m.status === 'pending');
 
           return (

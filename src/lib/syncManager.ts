@@ -185,9 +185,11 @@ class TournamentSyncManager {
    * Check if a match is actively locked by another referee
    */
   public isMatchLockedByOther(match: Match, currentRefereeName: string): boolean {
-    if (!match.lockedByRefereeName) return false;
+    const lockedBy = match.lockedByRefereeName || (match.status === 'live' ? match.refereeName : undefined);
+    if (!lockedBy) return false;
+    if (!currentRefereeName) return true;
     // If locked by the current referee, it is allowed
-    if (match.lockedByRefereeName.trim().toLowerCase() === currentRefereeName.trim().toLowerCase()) {
+    if (lockedBy.trim().toLowerCase() === currentRefereeName.trim().toLowerCase()) {
       return false;
     }
     // Check lock expiration
@@ -204,6 +206,7 @@ class TournamentSyncManager {
     const now = Date.now();
     const lockedMatch: Match = {
       ...match,
+      refereeName: refereeName || match.refereeName,
       lockedByRefereeName: refereeName,
       lockedByCourt: court,
       lockedAt: now,

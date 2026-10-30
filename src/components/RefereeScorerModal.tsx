@@ -78,19 +78,19 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
   const [showConfirmFinish, setShowConfirmFinish] = useState(false);
   const [showAdminSaveConfirm, setShowAdminSaveConfirm] = useState(false);
   const [showNotesInput, setShowNotesInput] = useState(false);
-
   const isCompleted = match.status === 'completed';
+  const lockedByOther = !isAdmin && syncManager.isMatchLockedByOther(match, refereeName || '');
 
   // Authorization logic:
   // 1. Admin can control any match (including modifying completed matches)
-  // 2. Logged-in Referee can control only non-completed matches
-  // 3. Regular viewer (neither Admin nor Referee) cannot control any score
-  const canControl = isAdmin || (isReferee && !isCompleted);
+  // 2. Logged-in Referee can control only non-completed matches that are NOT locked by another referee
+  // 3. Regular viewer or referee viewing another referee's match cannot control any score
+  const canControl = (isAdmin || (isReferee && !isCompleted)) && !lockedByOther;
   const isSpectator = !isAdmin && !isReferee;
   const isLockedForReferee = isReferee && !isAdmin && isCompleted;
   const isAdminEditingCompleted = isAdmin && isCompleted;
 
-  // Real-time synchronization for spectator mode: update scoreboard live when referee scores
+  // Real-time synchronization: update scoreboard live when referee scores
   useEffect(() => {
     const unsubscribe = syncManager.subscribe((event) => {
       if (
@@ -114,6 +114,13 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
       unsubscribe();
     };
   }, [match.id, canControl]);
+
+  // Immediately broadcast live status on mount if match was pending
+  useEffect(() => {
+    if (canControl && match.status === 'pending') {
+      emitLiveUpdate(score1, score2, servingTeam, serverNumber, 'live');
+    }
+  }, []);
 
   // Keep phone screen awake during match if referee is scoring
   const wakeLockRef = useRef<any>(null);
@@ -401,22 +408,19 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
                 <Eye className="w-4 h-4" />
               )}
             </div>
-            <div className="truncate flex items-center gap-2">
-              <span className="font-extrabold text-xs sm:text-sm tracking-tight text-white font-display uppercase truncate">
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <span className="font-black text-xs sm:text-sm tracking-tight text-amber-300 font-display uppercase shrink-0">
                 {match.roundName} #{match.matchNumber}
               </span>
               <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-400 text-slate-950 uppercase shrink-0 font-mono">
                 {match.court}
               </span>
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
-                isGroupStage
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                  : 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
-              }`}>
-                {isGroupStage ? 'Chạm 11 (Không cách 2)' : `Chạm ${targetPoints} (Cách 2)`}
+              <span className="px-1.5 sm:px-2 py-0.5 rounded text-[10px] font-bold shrink-0 bg-slate-800 text-slate-300 border border-slate-700">
+                <span className="sm:hidden font-mono text-[9px]">{isGroupStage ? '11đ' : `${targetPoints}đ`}</span>
+                <span className="hidden sm:inline">{isGroupStage ? 'Chạm 11 (Không cách 2)' : `Chạm ${targetPoints} (Cách 2)`}</span>
               </span>
               {(refereeName || match.refereeName) && (
-                <span className="text-[10px] text-amber-300 font-semibold truncate hidden sm:inline">
+                <span className="text-[10px] text-amber-300 font-bold truncate max-w-[120px] sm:max-w-none">
                   • TT: {refereeName || match.refereeName}
                 </span>
               )}
@@ -444,8 +448,28 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
         </div>
 
         {/* Dynamic Context Status Banners */}
+        {/* Banner 0: Locked by another referee (Issue 5 Protection) */}
+        {lockedByOther && (
+          <div className="bg-rose-950/95 border-b-2 border-rose-500 px-3.5 py-2 flex items-center justify-between text-xs shrink-0 text-white animate-in fade-in">
+            <div className="flex items-center gap-2 truncate">
+              <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0 animate-pulse" />
+              <div className="truncate">
+                <span className="font-black text-rose-200 uppercase tracking-wide block truncate text-[11px] sm:text-xs">
+                  Trận đang do Trọng tài {match.lockedByRefereeName || match.refereeName} ({match.lockedByCourt || match.court}) chấm điểm
+                </span>
+                <span className="text-[10px] sm:text-[11px] text-rose-300 block truncate">
+                  Bạn đang là <strong>{refereeName}</strong>. Bạn đang ở chế độ xem, không có quyền chấm điểm hay kết thúc trận này.
+                </span>
+              </div>
+            </div>
+            <span className="px-2 py-0.5 rounded bg-rose-700 text-white text-[10px] font-black uppercase shrink-0 font-mono ml-2">
+              Chỉ Xem
+            </span>
+          </div>
+        )}
+
         {/* Banner 1: Spectator / Viewer Mode Banner */}
-        {isSpectator && (
+        {isSpectator && !lockedByOther && (
           <div className="bg-sky-950/90 border-b border-sky-800/60 px-3.5 py-1.5 flex items-center justify-between text-[11px] shrink-0">
             <div className="flex items-center gap-2 text-sky-200 truncate">
               <Eye className="w-4 h-4 text-sky-400 shrink-0" />
@@ -503,13 +527,16 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
 
         {/* Banner 4: Active Referee Live Broadcasting */}
         {canControl && !isCompleted && (
-          <div className="bg-sky-950/80 border-b border-sky-800/40 px-3.5 py-1 flex items-center justify-between text-[11px] shrink-0">
-            <div className="flex items-center gap-1.5 text-sky-200">
+          <div className="bg-sky-950/90 border-b border-sky-800/40 px-3 py-1.5 flex items-center justify-between gap-2 text-[11px] shrink-0">
+            <div className="flex items-center gap-1.5 text-sky-200 min-w-0">
               <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse shrink-0" />
-              <span className="truncate">Đang phát trực tiếp từng điểm lên <strong>Lịch thi đấu</strong></span>
+              <span className="text-[10px] sm:text-[11px] text-sky-300 truncate">
+                <span className="hidden sm:inline">Phát trực tiếp lên </span>Lịch thi đấu
+              </span>
             </div>
-            <div className="text-[10px] text-amber-300 font-bold bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30 shrink-0">
-              🔒 Quyền chấm: {refereeName || match.refereeName || 'Trọng tài'}
+            <div className="text-[11px] text-amber-300 font-bold bg-amber-400/15 px-2.5 py-0.5 rounded-lg border border-amber-400/40 shrink-0 whitespace-nowrap flex items-center gap-1.5 shadow-xs">
+              <UserCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span>Quyền chấm: <strong className="text-white font-extrabold">{refereeName || match.refereeName || 'Trọng tài'}</strong></span>
             </div>
           </div>
         )}
@@ -522,8 +549,8 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
             <span className="font-mono font-black text-amber-300 text-sm sm:text-base bg-slate-900 px-2 py-0.5 rounded border border-amber-300/40 shrink-0">
               {callScore}
             </span>
-            <span className="text-[10px] text-slate-300 truncate">
-              ({servingTeam === 'team1' ? team1Name : team2Name} - Giao {serverNumber})
+            <span className="text-[10px] text-slate-300 truncate font-semibold">
+              ({servingTeam === 'team1' ? team1Name : team2Name} - Lượt {serverNumber})
             </span>
           </div>
 
@@ -538,10 +565,10 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
           )}
 
           {!canControl && (
-            <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
-              <span>Giao {serverNumber}</span>
+            <div className="text-[10px] text-slate-300 font-mono flex items-center gap-1.5 shrink-0 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+              <span className="font-bold text-amber-300">Lượt {serverNumber}</span>
               <span>·</span>
-              <span>Đang {isCompleted ? 'Đã kết thúc' : 'Đang đấu'}</span>
+              <span>{isCompleted ? 'Đã kết thúc' : 'Đang đấu'}</span>
             </div>
           )}
         </div>
@@ -607,7 +634,7 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
                         </span>
                       ) : isServing && !isCompleted ? (
                         <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-500 text-slate-950 uppercase animate-pulse">
-                          GIAO S{serverNumber}
+                          LƯỢT {serverNumber}
                         </span>
                       ) : (
                         <span className="text-[9px] text-slate-500 font-mono">Đỡ bóng</span>
@@ -661,7 +688,7 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
                         }`}
                       >
                         <Plus className="w-6 h-6 stroke-[3]" />
-                        <span>+1 ĐIỂM</span>
+                        <span>1 ĐIỂM</span>
                       </button>
                     </div>
                   ) : (
