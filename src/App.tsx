@@ -19,7 +19,6 @@ import {
   getSupabaseClient
 } from './lib/supabase';
 
-import { Header } from './components/Header';
 import { HeroBanner } from './components/HeroBanner';
 import { GroupsView } from './components/GroupsView';
 import { ScheduleView } from './components/ScheduleView';
@@ -154,8 +153,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans pb-24 selection:bg-amber-300">
-      {/* Top Header (Clean single row without duplicate navigation) */}
-      <Header
+      {/* Hero Tournament Banner with Official Poster visuals & Quick Tools (Top redundant header removed) */}
+      <HeroBanner
         isRefereeMode={isRefereeMode}
         onOpenRefereeModal={() => setShowRefereeModal(true)}
         onOpenSupabaseModal={() => setShowSupabaseModal(true)}
@@ -163,9 +162,6 @@ export default function App() {
         soundEnabled={soundEnabled}
         setSoundEnabled={setSoundEnabled}
       />
-
-      {/* Hero Tournament Banner with Official Poster visuals */}
-      <HeroBanner />
 
       {/* Interactive Scenario / Test Data Picker */}
       <ScenarioPickerBar
