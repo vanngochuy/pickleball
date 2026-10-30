@@ -67,6 +67,7 @@ export const RefereeLoginModal: React.FC<RefereeLoginModalProps> = ({
 
     if (pinInput.trim() === securePin) {
       setIsRefereeMode(true);
+      localStorage.setItem('pickleball_referee_mode', 'true');
       setSuccessMsg('Đã xác thực và kích hoạt Chế Độ Trọng Tài thành công!');
       setErrorMsg('');
       setPinInput('');
@@ -82,6 +83,7 @@ export const RefereeLoginModal: React.FC<RefereeLoginModalProps> = ({
 
   const handleDeactivate = () => {
     setIsRefereeMode(false);
+    localStorage.removeItem('pickleball_referee_mode');
     onClose();
   };
 

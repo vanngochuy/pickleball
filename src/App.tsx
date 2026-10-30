@@ -73,7 +73,9 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<'groups' | 'schedule' | 'bracket' | 'rules' | 'referee_desk'>('groups');
   const [selectedMatchForScorer, setSelectedMatchForScorer] = useState<Match | null>(null);
-  const [isRefereeMode, setIsRefereeMode] = useState<boolean>(true); // Enabled by default for tournament administration
+  const [isRefereeMode, setIsRefereeMode] = useState<boolean>(() => {
+    return localStorage.getItem('pickleball_referee_mode') === 'true';
+  });
   const [assignedCourt, setAssignedCourt] = useState<string>(() => {
     const list = loadLocalReferees() || DEFAULT_REFEREES;
     return list[0]?.court || 'Sân 1';
@@ -162,8 +164,18 @@ export default function App() {
     }
   }, []);
 
-  // Open Scorer and acquire exclusive lock for this referee
+  // Open Scorer / Match Viewer
   const handleOpenScorerForMatch = (match: Match) => {
+    // If user is a spectator (neither referee nor admin), open in read-only mode without acquiring lock
+    if (!isRefereeMode && !isAdminLoggedIn) {
+      setSelectedMatchForScorer(match);
+      return;
+    }
+    // If match is already completed and user is not admin, open without lock
+    if (match.status === 'completed' && !isAdminLoggedIn) {
+      setSelectedMatchForScorer(match);
+      return;
+    }
     const locked = syncManager.acquireMatchLock(match, refereeName, assignedCourt);
     setSelectedMatchForScorer(locked);
   };
@@ -267,6 +279,10 @@ export default function App() {
   };
 
   const handleOpenRefereeForNextMatch = () => {
+    if (!isRefereeMode && !isAdminLoggedIn) {
+      setShowRefereeModal(true);
+      return;
+    }
     const liveMatch = matches.find((m) => m.status === 'live');
     if (liveMatch) {
       handleOpenScorerForMatch(liveMatch);
@@ -465,6 +481,10 @@ export default function App() {
           teams={teams}
           refereeName={refereeName}
           assignedCourt={assignedCourt}
+          isAdmin={isAdminLoggedIn}
+          isReferee={isRefereeMode}
+          onOpenRefereeLogin={() => setShowRefereeModal(true)}
+          onOpenAdminLogin={() => setShowAdminModal(true)}
           onClose={() => setSelectedMatchForScorer(null)}
           onSaveMatch={handleSaveMatch}
           onLiveScoreUpdate={handleLiveScoreUpdate}

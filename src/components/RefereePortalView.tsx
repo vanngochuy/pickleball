@@ -322,9 +322,13 @@ export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
 
                   <button
                     onClick={() => handleOpenScorerWithLockCheck(m)}
-                    className="px-2.5 py-1 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition-colors shrink-0"
+                    className={`px-2.5 py-1 text-xs rounded-lg transition-colors shrink-0 font-medium ${
+                      isAdmin
+                        ? 'text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                    }`}
                   >
-                    Sửa điểm
+                    {isAdmin ? 'Sửa điểm (Admin)' : 'Xem chi tiết'}
                   </button>
                 </div>
               ))
