@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Match, Team, RefereeAccount } from '../types/tournament';
-import { ShieldCheck, PlayCircle, Clock, CheckCircle2, UserCheck, Flame, Filter, Users } from 'lucide-react';
+import { ShieldCheck, PlayCircle, Clock, CheckCircle2, UserCheck, Flame, Filter, Users, Zap, Lock } from 'lucide-react';
 import { GROUP_CONFIGS } from '../data/initialTournamentData';
+import { syncManager } from '../lib/syncManager';
 
 interface RefereePortalViewProps {
   matches: Match[];
@@ -13,6 +14,9 @@ interface RefereePortalViewProps {
   onOpenRefereeSettings: () => void;
   referees?: RefereeAccount[];
   onSelectReferee?: (ref: RefereeAccount) => void;
+  onOpenTestBench?: () => void;
+  onForceUnlockMatch?: (match: Match) => void;
+  isAdmin?: boolean;
 }
 
 export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
@@ -25,7 +29,27 @@ export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
   onOpenRefereeSettings,
   referees = [],
   onSelectReferee,
+  onOpenTestBench,
+  onForceUnlockMatch,
+  isAdmin = false,
 }) => {
+  const [blockedLockAlert, setBlockedLockAlert] = useState<{
+    match: Match;
+    lockedBy: string;
+    court: string;
+  } | null>(null);
+
+  const handleOpenScorerWithLockCheck = (m: Match) => {
+    if (syncManager.isMatchLockedByOther(m, refereeName)) {
+      setBlockedLockAlert({
+        match: m,
+        lockedBy: m.lockedByRefereeName || 'Trọng tài khác',
+        court: m.lockedByCourt || m.court,
+      });
+      return;
+    }
+    onOpenMatchScorer(m);
+  };
   const getTeamName = (teamId: string, placeholder?: string) => {
     if (!teamId) return placeholder || 'Chờ kết quả';
     const t = teams.find((item) => item.id === teamId);
@@ -102,7 +126,7 @@ export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
           </div>
         </div>
 
-        {/* 3 Referees Quick-Switcher Strip */}
+        {/* 3 Referees Quick-Switcher Strip & Test Bench CTA */}
         {referees.length > 0 && (
           <div className="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5 shrink-0">
@@ -136,6 +160,16 @@ export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
                 );
               })}
             </div>
+
+            {isAdmin && onOpenTestBench && (
+              <button
+                onClick={onOpenTestBench}
+                className="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md transition-all active:scale-95 shrink-0"
+              >
+                <Zap className="w-4 h-4 fill-slate-950" />
+                <span>Test Đồng Thời 3 Trọng Tài</span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -168,7 +202,7 @@ export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
             </div>
 
             <button
-              onClick={() => onOpenMatchScorer(activeLiveMatch)}
+              onClick={() => handleOpenScorerWithLockCheck(activeLiveMatch)}
               className="w-full md:w-auto px-6 py-4 rounded-2xl bg-slate-950 hover:bg-slate-900 text-amber-300 font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-xl transition-all active:scale-95"
             >
               <PlayCircle className="w-6 h-6 text-amber-400" />
@@ -193,7 +227,7 @@ export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
           </div>
 
           <button
-            onClick={() => onOpenMatchScorer(nextMatch)}
+            onClick={() => handleOpenScorerWithLockCheck(nextMatch)}
             className="w-full md:w-auto px-5 py-3 rounded-2xl bg-sky-600 hover:bg-sky-500 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition-all active:scale-95"
           >
             <PlayCircle className="w-5 h-5" />
@@ -236,12 +270,19 @@ export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => onOpenMatchScorer(m)}
-                    className="px-3 py-1.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 shrink-0"
-                  >
-                    Chấm điểm
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {m.lockedByRefereeName && (
+                      <span className="text-[10px] text-amber-600 font-bold flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        <Lock className="w-3 h-3" /> {m.lockedByRefereeName}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => handleOpenScorerWithLockCheck(m)}
+                      className="px-3 py-1.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 shrink-0"
+                    >
+                      Chấm điểm
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -278,7 +319,7 @@ export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
                   </div>
 
                   <button
-                    onClick={() => onOpenMatchScorer(m)}
+                    onClick={() => handleOpenScorerWithLockCheck(m)}
                     className="px-2.5 py-1 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition-colors shrink-0"
                   >
                     Sửa điểm
@@ -289,6 +330,56 @@ export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Lock Rejection Modal Dialog */}
+      {blockedLockAlert && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-rose-200 space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="p-3 bg-rose-100 rounded-2xl">
+                <Lock className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-black text-slate-900 text-base uppercase font-display">
+                  TRẬN ĐẤU ĐANG BỊ KHÓA
+                </h3>
+                <p className="text-xs text-slate-500">Chế độ bảo vệ độc quyền trận đấu</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-rose-50 rounded-2xl border border-rose-100 text-xs text-rose-950 space-y-1.5">
+              <p>
+                Trận <strong>#{blockedLockAlert.match.matchNumber}</strong> ({blockedLockAlert.match.roundName}) đang được{' '}
+                <strong>Trọng tài {blockedLockAlert.lockedBy}</strong> trực tiếp điều hành và chấm điểm tại{' '}
+                <strong>{blockedLockAlert.court}</strong>.
+              </p>
+              <p className="text-slate-600 text-[11px] leading-relaxed">
+                Để tránh mất dữ liệu hoặc xung đột điểm số khi 3 trọng tài cùng thao tác đồng thời trên các sân, trọng tài khác không được phép can thiệp. Điểm số của trận này đang được tự động cập nhật liên tục ra màn hình ngoài.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              {onForceUnlockMatch && (
+                <button
+                  onClick={() => {
+                    onForceUnlockMatch(blockedLockAlert.match);
+                    setBlockedLockAlert(null);
+                  }}
+                  className="px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 rounded-xl transition-colors"
+                >
+                  Mở khóa khẩn cấp (Admin)
+                </button>
+              )}
+              <button
+                onClick={() => setBlockedLockAlert(null)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-colors"
+              >
+                Đã hiểu & Quay lại
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

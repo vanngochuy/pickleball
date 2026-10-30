@@ -8,10 +8,7 @@ import {
   Check,
   RefreshCw,
   UploadCloud,
-  DownloadCloud,
-  Globe,
-  ExternalLink,
-  Code
+  DownloadCloud
 } from 'lucide-react';
 import {
   getSupabaseCredentials,
@@ -37,7 +34,7 @@ export const SupabaseSettingsModal: React.FC<SupabaseSettingsModalProps> = ({
   const currentCreds = getSupabaseCredentials();
   const [url, setUrl] = useState(currentCreds.url);
   const [anonKey, setAnonKey] = useState(currentCreds.anonKey);
-  const [activeTab, setActiveTab] = useState<'config' | 'sql' | 'vercel'>('config');
+  const [activeTab, setActiveTab] = useState<'config' | 'sql'>('config');
 
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -127,10 +124,10 @@ CREATE POLICY "Public Read/Write Matches" ON matches FOR ALL USING (true);`;
             </div>
             <div>
               <h3 className="font-extrabold text-slate-900 text-base sm:text-lg">
-                Cấu Hình Supabase & Deploy Vercel
+                Cấu Hình Đồng Bộ Đám Mây (Supabase)
               </h3>
               <p className="text-xs text-slate-500">
-                Đồng bộ cơ sở dữ liệu thời gian thực và triển khai web
+                Đồng bộ cơ sở dữ liệu thời gian thực giữa nhiều thiết bị
               </p>
             </div>
           </div>
@@ -160,14 +157,6 @@ CREATE POLICY "Public Read/Write Matches" ON matches FOR ALL USING (true);`;
             }`}
           >
             2. SQL Schema
-          </button>
-          <button
-            onClick={() => setActiveTab('vercel')}
-            className={`flex-1 py-2 px-3 rounded-lg transition-colors text-center ${
-              activeTab === 'vercel' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
-            }`}
-          >
-            3. Deploy Vercel & Domain
           </button>
         </div>
 
@@ -276,41 +265,6 @@ CREATE POLICY "Public Read/Write Matches" ON matches FOR ALL USING (true);`;
               <p className="text-[11px] text-slate-500">
                 Gợi ý: Tệp đầy đủ <span className="font-mono">supabase-schema.sql</span> đã có sẵn ở thư mục gốc của dự án.
               </p>
-            </div>
-          )}
-
-          {activeTab === 'vercel' && (
-            <div className="space-y-4 text-xs text-slate-700">
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                <h4 className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
-                  <Globe className="w-4 h-4 text-sky-600" />
-                  Cấu hình Tên miền: <span className="font-mono text-sky-700">pickleball-tapdoanbien.bbm.io.vn</span>
-                </h4>
-                <ol className="list-decimal pl-4 space-y-1.5 text-slate-600">
-                  <li>
-                    Vào dự án trên <strong>Vercel</strong> → Chọn <strong>Settings</strong> → <strong>Domains</strong>.
-                  </li>
-                  <li>
-                    Nhập tên miền <strong>pickleball-tapdoanbien.bbm.io.vn</strong> và nhấn <strong>Add</strong>.
-                  </li>
-                  <li>
-                    Trỏ bản ghi CNAME tại nhà cung cấp DNS của tên miền <code className="bg-slate-200 px-1 rounded">bbm.io.vn</code> về <code className="bg-slate-200 px-1 rounded">cname.vercel-dns.com</code>.
-                  </li>
-                </ol>
-              </div>
-
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                <h4 className="font-bold text-sm text-slate-900">
-                  Biến Môi Trường Trên Vercel (Environment Variables)
-                </h4>
-                <p className="text-slate-600">
-                  Trong mục <strong>Settings → Environment Variables</strong> của Vercel, bạn thêm 2 biến:
-                </p>
-                <div className="font-mono bg-white p-2.5 rounded-lg border border-slate-200 space-y-1">
-                  <div>VITE_SUPABASE_URL = "https://your-project.supabase.co"</div>
-                  <div>VITE_SUPABASE_ANON_KEY = "eyJhbGciOi..."</div>
-                </div>
-              </div>
             </div>
           )}
         </div>

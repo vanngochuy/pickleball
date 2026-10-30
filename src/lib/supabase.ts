@@ -182,6 +182,10 @@ export async function syncMatchToSupabase(match: Match): Promise<boolean> {
       serving_team_id: match.servingTeamId || null,
       history: match.history || [],
       referee_notes: match.refereeNotes || null,
+      referee_name: match.refereeName || null,
+      locked_by_referee_name: match.lockedByRefereeName || null,
+      locked_by_court: match.lockedByCourt || null,
+      locked_at: match.lockedAt ? new Date(match.lockedAt).toISOString() : null,
       updated_at: new Date().toISOString(),
     });
 
@@ -223,6 +227,10 @@ export async function fetchMatchesFromSupabase(): Promise<Match[] | null> {
       servingTeamId: d.serving_team_id,
       history: d.history || [],
       refereeNotes: d.referee_notes,
+      refereeName: d.referee_name,
+      lockedByRefereeName: d.locked_by_referee_name,
+      lockedByCourt: d.locked_by_court,
+      lockedAt: d.locked_at ? new Date(d.locked_at).getTime() : undefined,
     }));
   } catch (e) {
     console.warn('Fetch from Supabase failed:', e);

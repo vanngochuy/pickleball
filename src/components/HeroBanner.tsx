@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, MapPin, Sparkles, Volume2, VolumeX, Share2, Database, ShieldCheck } from 'lucide-react';
+import { Calendar, MapPin, Sparkles, Volume2, VolumeX, Share2, Database, ShieldCheck, ShieldAlert, Lock } from 'lucide-react';
 import { TOURNAMENT_CONFIG } from '../data/initialTournamentData';
 import { sounds } from '../lib/tournamentUtils';
 import { getSupabaseCredentials } from '../lib/supabase';
@@ -11,6 +11,8 @@ interface HeroBannerProps {
   onOpenSupabaseModal?: () => void;
   onOpenRefereeModal?: () => void;
   isRefereeMode?: boolean;
+  isAdmin?: boolean;
+  onOpenAdminModal?: () => void;
 }
 
 export const HeroBanner: React.FC<HeroBannerProps> = ({
@@ -20,6 +22,8 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
   onOpenSupabaseModal,
   onOpenRefereeModal,
   isRefereeMode = false,
+  isAdmin = false,
+  onOpenAdminModal,
 }) => {
   const { url } = getSupabaseCredentials();
   const isCloudConnected = Boolean(url);
@@ -132,7 +136,24 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                 >
                   <ShieldCheck className="w-3.5 h-3.5" />
                   <span className="hidden md:inline">
-                    {isRefereeMode ? 'Trọng Tài [BẬT]' : 'Trọng Tài'}
+                    {isRefereeMode ? 'Trọng Tài' : 'Trọng Tài'}
+                  </span>
+                </button>
+              )}
+
+              {onOpenAdminModal && (
+                <button
+                  onClick={onOpenAdminModal}
+                  title="Khu Vực Quản Trị Viên / Ban Tổ Chức"
+                  className={`flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg transition-all ${
+                    isAdmin
+                      ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-xs ring-1 ring-rose-300'
+                      : 'bg-white/15 text-white hover:bg-white/25'
+                  }`}
+                >
+                  {isAdmin ? <ShieldAlert className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                  <span className="hidden sm:inline">
+                    {isAdmin ? 'Admin BTC' : 'Admin'}
                   </span>
                 </button>
               )}

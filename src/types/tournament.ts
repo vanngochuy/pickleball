@@ -44,6 +44,10 @@ export interface Match {
   history?: MatchPointHistory[];
   refereeNotes?: string;
   refereeName?: string;
+  lockedByRefereeName?: string;
+  lockedByCourt?: string;
+  lockedAt?: number; // timestamp in ms when referee opened scoring
+  lastUpdatedAt?: number; // timestamp in ms for conflict-free resolution
 }
 
 export interface GroupStanding {

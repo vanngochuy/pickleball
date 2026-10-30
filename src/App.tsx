@@ -15,6 +15,7 @@ import {
   loadLocalReferees,
   saveLocalReferees,
   syncMatchToSupabase,
+  syncAllMatchesToSupabase,
   fetchMatchesFromSupabase,
   getSupabaseClient
 } from './lib/supabase';
@@ -31,13 +32,17 @@ import { SupabaseSettingsModal } from './components/SupabaseSettingsModal';
 import { ShareExportModal } from './components/ShareExportModal';
 import { RulesModal } from './components/RulesModal';
 import { ScenarioPickerBar } from './components/ScenarioPickerBar';
+import { ConcurrentRefereeTestModal } from './components/ConcurrentRefereeTestModal';
+import { AdminModal } from './components/AdminModal';
 import { ScenarioType, getFullCompletedScenario } from './data/mockScenarios';
+import { syncManager } from './lib/syncManager';
 
 import {
   Users,
   Calendar,
   Trophy,
   ShieldCheck,
+  ShieldAlert,
   Globe,
   Heart,
   Sparkles
@@ -79,7 +84,57 @@ export default function App() {
   const [showRefereeModal, setShowRefereeModal] = useState<boolean>(false);
   const [showSupabaseModal, setShowSupabaseModal] = useState<boolean>(false);
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
+  const [showTestBenchModal, setShowTestBenchModal] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [showAdminModal, setShowAdminModal] = useState<boolean>(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
+    return localStorage.getItem('pickleball_admin_auth') === 'true';
+  });
+
+  // Cross-tab and real-time subscription for simultaneous 3-referee scoring without data loss
+  useEffect(() => {
+    const unsubscribe = syncManager.subscribe((event) => {
+      if (event.type === 'MATCH_LIVE_UPDATE' || event.type === 'MATCH_COMPLETED') {
+        setMatches((prev) => {
+          const next = prev.map((m) => (m.id === event.match.id ? event.match : m));
+          return autoAdvanceBracket(next, teams);
+        });
+      } else if (event.type === 'BATCH_SYNC') {
+        setMatches(autoAdvanceBracket(event.matches, teams));
+      } else if (event.type === 'MATCH_LOCKED') {
+        setMatches((prev) =>
+          prev.map((m) =>
+            m.id === event.matchId
+              ? {
+                  ...m,
+                  lockedByRefereeName: event.refereeName,
+                  lockedByCourt: event.court,
+                  lockedAt: event.timestamp,
+                  status: m.status === 'pending' ? 'live' : m.status,
+                }
+              : m
+          )
+        );
+      } else if (event.type === 'MATCH_UNLOCKED') {
+        setMatches((prev) =>
+          prev.map((m) =>
+            m.id === event.matchId
+              ? {
+                  ...m,
+                  lockedByRefereeName: undefined,
+                  lockedByCourt: undefined,
+                  lockedAt: undefined,
+                }
+              : m
+          )
+        );
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [teams]);
 
   // Save changes locally whenever matches change
   useEffect(() => {
@@ -106,9 +161,25 @@ export default function App() {
     }
   }, []);
 
-  // Save match from Referee Scoring Modal
+  // Open Scorer and acquire exclusive lock for this referee
+  const handleOpenScorerForMatch = (match: Match) => {
+    const locked = syncManager.acquireMatchLock(match, refereeName, assignedCourt);
+    setSelectedMatchForScorer(locked);
+  };
+
+  // Live score update emitted on every point scored
+  const handleLiveScoreUpdate = (updatedMatch: Match) => {
+    syncManager.atomicSaveMatch(updatedMatch);
+    setMatches((prev) => {
+      const next = prev.map((m) => (m.id === updatedMatch.id ? updatedMatch : m));
+      return autoAdvanceBracket(next, teams);
+    });
+  };
+
+  // Save completed or draft match from Referee Scoring Modal and release lock
   const handleSaveMatch = async (updatedMatch: Match) => {
-    let newMatches = matches.map((m) => (m.id === updatedMatch.id ? updatedMatch : m));
+    const released = syncManager.releaseMatchLock(updatedMatch);
+    let newMatches = matches.map((m) => (m.id === released.id ? released : m));
 
     // Automatically check group standings and propagate advancing teams into Quarterfinals & Semifinals & Final
     newMatches = autoAdvanceBracket(newMatches, teams);
@@ -118,7 +189,63 @@ export default function App() {
     saveLocalMatches(newMatches);
 
     // Sync to Supabase in background
-    syncMatchToSupabase(updatedMatch);
+    syncMatchToSupabase(released);
+  };
+
+  // Release lock when closing modal
+  const handleReleaseLock = (match: Match) => {
+    syncManager.releaseMatchLock(match);
+    setMatches((prev) => {
+      const next = prev.map((m) => (m.id === match.id ? match : m));
+      return autoAdvanceBracket(next, teams);
+    });
+  };
+
+  // Admin emergency unlock
+  const handleForceUnlockMatch = (match: Match) => {
+    syncManager.forceUnlockMatch(match);
+    setMatches((prev) => {
+      const next = prev.map((m) =>
+        m.id === match.id
+          ? {
+              ...m,
+              lockedByRefereeName: undefined,
+              lockedByCourt: undefined,
+              lockedAt: undefined,
+            }
+          : m
+      );
+      return autoAdvanceBracket(next, teams);
+    });
+  };
+
+  // Admin Authentication & Tournament Reset for Kickoff
+  const handleAdminLogin = (password: string): boolean => {
+    const clean = password.trim().toLowerCase();
+    if (clean === 'admin123' || clean === 'bien2026' || clean === '1234') {
+      setIsAdminLoggedIn(true);
+      localStorage.setItem('pickleball_admin_auth', 'true');
+      return true;
+    }
+    return false;
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdminLoggedIn(false);
+    localStorage.removeItem('pickleball_admin_auth');
+  };
+
+  const handleResetTournamentData = () => {
+    const freshMatches = generateInitialMatches();
+    const freshTeams = INITIAL_TEAMS;
+    syncManager.clearAllLocks();
+    setMatches(freshMatches);
+    setTeams(freshTeams);
+    setCurrentScenario('clean_reset');
+    saveLocalMatches(freshMatches);
+    saveLocalTeams(freshTeams);
+    syncManager.broadcastBatch(freshMatches);
+    syncAllMatchesToSupabase(freshMatches).catch(() => {});
   };
 
   // Explicit re-calculation trigger
@@ -138,22 +265,22 @@ export default function App() {
   const handleOpenRefereeForNextMatch = () => {
     const liveMatch = matches.find((m) => m.status === 'live');
     if (liveMatch) {
-      setSelectedMatchForScorer(liveMatch);
+      handleOpenScorerForMatch(liveMatch);
       return;
     }
     const nextPending = matches.find((m) => m.status === 'pending');
     if (nextPending) {
-      setSelectedMatchForScorer(nextPending);
+      handleOpenScorerForMatch(nextPending);
       return;
     }
     if (matches[0]) {
-      setSelectedMatchForScorer(matches[0]);
+      handleOpenScorerForMatch(matches[0]);
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans pb-24 selection:bg-amber-300">
-      {/* Hero Tournament Banner with Official Poster visuals & Quick Tools (Top redundant header removed) */}
+      {/* Hero Tournament Banner with Official Poster visuals & Quick Tools */}
       <HeroBanner
         isRefereeMode={isRefereeMode}
         onOpenRefereeModal={() => setShowRefereeModal(true)}
@@ -161,13 +288,20 @@ export default function App() {
         onOpenShareModal={() => setShowShareModal(true)}
         soundEnabled={soundEnabled}
         setSoundEnabled={setSoundEnabled}
+        isAdmin={isAdminLoggedIn}
+        onOpenAdminModal={() => setShowAdminModal(true)}
       />
 
-      {/* Interactive Scenario / Test Data Picker */}
-      <ScenarioPickerBar
-        currentScenario={currentScenario}
-        onSelectScenario={handleSelectScenario}
-      />
+      {/* Interactive Scenario / Test Data Picker — ONLY VISIBLE WHEN ADMIN LOGGED IN */}
+      {isAdminLoggedIn && (
+        <ScenarioPickerBar
+          currentScenario={currentScenario}
+          onSelectScenario={handleSelectScenario}
+          onOpenTestBench={() => setShowTestBenchModal(true)}
+          onResetTournament={handleResetTournamentData}
+          onOpenAdminModal={() => setShowAdminModal(true)}
+        />
+      )}
 
       {/* Main Tournament Content */}
       <main className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 flex-1 w-full space-y-5 sm:space-y-6">
@@ -175,7 +309,7 @@ export default function App() {
           <GroupsView
             teams={teams}
             matches={matches}
-            onOpenMatchScorer={(m) => setSelectedMatchForScorer(m)}
+            onOpenMatchScorer={handleOpenScorerForMatch}
           />
         )}
 
@@ -183,8 +317,10 @@ export default function App() {
           <ScheduleView
             matches={matches}
             teams={teams}
-            onOpenMatchScorer={(m) => setSelectedMatchForScorer(m)}
+            onOpenMatchScorer={handleOpenScorerForMatch}
             isRefereeMode={isRefereeMode}
+            currentRefereeName={refereeName}
+            onForceUnlockMatch={handleForceUnlockMatch}
           />
         )}
 
@@ -192,7 +328,7 @@ export default function App() {
           <KnockoutBracketView
             matches={matches}
             teams={teams}
-            onOpenMatchScorer={(m) => setSelectedMatchForScorer(m)}
+            onOpenMatchScorer={handleOpenScorerForMatch}
             onAutoAdvance={handleAutoAdvance}
           />
         )}
@@ -201,7 +337,7 @@ export default function App() {
           <RefereePortalView
             matches={matches}
             teams={teams}
-            onOpenMatchScorer={(m) => setSelectedMatchForScorer(m)}
+            onOpenMatchScorer={handleOpenScorerForMatch}
             assignedCourt={assignedCourt}
             setAssignedCourt={setAssignedCourt}
             refereeName={refereeName}
@@ -211,6 +347,9 @@ export default function App() {
               setRefereeName(ref.name);
               setAssignedCourt(ref.court);
             }}
+            onOpenTestBench={() => setShowTestBenchModal(true)}
+            onForceUnlockMatch={handleForceUnlockMatch}
+            isAdmin={isAdminLoggedIn}
           />
         )}
 
@@ -243,10 +382,13 @@ export default function App() {
             </button>
             <span>·</span>
             <button
-              onClick={() => setShowSupabaseModal(true)}
-              className="hover:text-slate-900 transition-colors"
+              onClick={() => setShowAdminModal(true)}
+              className={`hover:text-slate-900 transition-colors flex items-center gap-1 font-semibold ${
+                isAdminLoggedIn ? 'text-rose-600 font-bold' : 'text-slate-600'
+              }`}
             >
-              Hướng Dẫn Deploy Vercel & Supabase
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>{isAdminLoggedIn ? 'Admin BTC' : 'Quản Trị Viên'}</span>
             </button>
           </div>
         </div>
@@ -317,8 +459,25 @@ export default function App() {
           match={selectedMatchForScorer}
           teams={teams}
           refereeName={refereeName}
+          assignedCourt={assignedCourt}
           onClose={() => setSelectedMatchForScorer(null)}
           onSaveMatch={handleSaveMatch}
+          onLiveScoreUpdate={handleLiveScoreUpdate}
+          onReleaseLock={handleReleaseLock}
+        />
+      )}
+
+      {showTestBenchModal && (
+        <ConcurrentRefereeTestModal
+          isOpen={showTestBenchModal}
+          onClose={() => setShowTestBenchModal(false)}
+          matches={matches}
+          teams={teams}
+          referees={referees}
+          onApplyMatches={(newMatches) => {
+            setMatches(autoAdvanceBracket(newMatches, teams));
+            saveLocalMatches(newMatches);
+          }}
         />
       )}
 
@@ -352,6 +511,20 @@ export default function App() {
       {activeTab === 'rules' && (
         <RulesModal onClose={() => setActiveTab('groups')} />
       )}
+
+      {/* Admin / Organizing Committee Modal */}
+      <AdminModal
+        isOpen={showAdminModal}
+        onClose={() => setShowAdminModal(false)}
+        isAdmin={isAdminLoggedIn}
+        onLogin={handleAdminLogin}
+        onLogout={handleAdminLogout}
+        onResetTournament={handleResetTournamentData}
+        currentScenario={currentScenario}
+        onSelectScenario={handleSelectScenario}
+        onOpenTestBench={() => setShowTestBenchModal(true)}
+        onOpenSupabaseModal={() => setShowSupabaseModal(true)}
+      />
     </div>
   );
 }

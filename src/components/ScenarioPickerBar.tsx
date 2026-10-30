@@ -8,18 +8,24 @@ import {
   getCleanResetScenario
 } from '../data/mockScenarios';
 import { Match } from '../types/tournament';
-import { Sparkles, Check, RefreshCw, Trophy, Flame, Layers, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sparkles, Check, RefreshCw, Trophy, Flame, Layers, ChevronDown, ChevronUp, Zap, RotateCcw, ShieldCheck } from 'lucide-react';
 import { sounds } from '../lib/tournamentUtils';
 import confetti from 'canvas-confetti';
 
 interface ScenarioPickerBarProps {
   currentScenario: ScenarioType;
   onSelectScenario: (scenario: ScenarioType, newMatches: Match[]) => void;
+  onOpenTestBench?: () => void;
+  onResetTournament?: () => void;
+  onOpenAdminModal?: () => void;
 }
 
 export const ScenarioPickerBar: React.FC<ScenarioPickerBarProps> = ({
   currentScenario,
   onSelectScenario,
+  onOpenTestBench,
+  onResetTournament,
+  onOpenAdminModal,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -59,26 +65,55 @@ export const ScenarioPickerBar: React.FC<ScenarioPickerBarProps> = ({
   const currentInfo = SCENARIO_LIST.find((s) => s.id === currentScenario);
 
   return (
-    <div className="bg-slate-100/90 border-b border-slate-200/80 px-3 sm:px-6 py-1.5 transition-all">
+    <div className="bg-slate-900 text-white border-b border-slate-800 px-3 sm:px-6 py-1.5 transition-all">
       <div className="max-w-7xl mx-auto">
         {/* Sleek compact 1-line control */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 truncate text-[11px] sm:text-xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-            <span className="text-slate-500 font-semibold shrink-0">Dữ liệu test:</span>
-            <span className="font-bold text-slate-900 truncate flex items-center gap-1">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-black text-[9px] uppercase tracking-wider shrink-0">
+              <ShieldCheck className="w-3 h-3" />
+              ADMIN BTC
+            </span>
+            <span className="text-slate-400 font-semibold shrink-0">Kịch bản:</span>
+            <span className="font-bold text-white truncate flex items-center gap-1">
               {getScenarioIcon(currentScenario)}
               <span className="truncate">{currentInfo?.name}</span>
             </span>
           </div>
 
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 border border-slate-200/80 text-[11px] font-bold text-sky-700 flex items-center gap-1 shrink-0 transition-colors shadow-2xs"
-          >
-            <span>{isOpen ? 'Thu gọn' : 'Đổi kịch bản'}</span>
-            {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {onResetTournament && (
+              <button
+                onClick={onResetTournament}
+                className="px-2 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] flex items-center gap-1 shrink-0 transition-all shadow-2xs active:scale-95"
+                title="Reset sạch sẽ toàn bộ giải về 0 - 0 trước giờ khai mạc 31/10"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span className="hidden sm:inline">Reset 0-0 Giải Thật</span>
+                <span className="sm:hidden">Reset 0-0</span>
+              </button>
+            )}
+
+            {onOpenTestBench && (
+              <button
+                onClick={onOpenTestBench}
+                className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[11px] flex items-center gap-1 shrink-0 transition-colors shadow-2xs active:scale-95"
+                title="Chạy mô phỏng và đánh giá 3 trọng tài thao tác đồng thời trên 3 sân"
+              >
+                <Zap className="w-3 h-3 fill-slate-950" />
+                <span className="hidden sm:inline">Test 3 Trọng Tài Đồng Thời</span>
+                <span className="sm:hidden">Test 3 TT</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold text-sky-300 flex items-center gap-1 shrink-0 transition-colors shadow-2xs"
+            >
+              <span>{isOpen ? 'Thu gọn' : 'Đổi kịch bản'}</span>
+              {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+          </div>
         </div>
 
         {/* Collapsible Options Drawer */}

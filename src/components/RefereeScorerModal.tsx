@@ -20,16 +20,22 @@ interface RefereeScorerModalProps {
   match: Match | null;
   teams: Team[];
   refereeName?: string;
+  assignedCourt?: string;
   onClose: () => void;
   onSaveMatch: (updatedMatch: Match) => void;
+  onLiveScoreUpdate?: (updatedMatch: Match) => void;
+  onReleaseLock?: (match: Match) => void;
 }
 
 export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
   match,
   teams,
   refereeName,
+  assignedCourt,
   onClose,
   onSaveMatch,
+  onLiveScoreUpdate,
+  onReleaseLock,
 }) => {
   if (!match) return null;
 
@@ -107,6 +113,33 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
     ]);
   };
 
+  // Broadcast live score update on every point modification so athletes watching "Lịch thi đấu" see it in real-time!
+  const emitLiveUpdate = (
+    newScore1: number,
+    newScore2: number,
+    newServingTeam: 'team1' | 'team2',
+    newServerNum: 1 | 2,
+    newStatus: Match['status'] = 'live'
+  ) => {
+    const updated: Match = {
+      ...match,
+      score1: newScore1,
+      score2: newScore2,
+      serverNumber: newServerNum,
+      servingTeamId: newServingTeam === 'team1' ? match.team1Id : match.team2Id,
+      status: newStatus,
+      refereeNotes,
+      refereeName: refereeName || match.refereeName,
+      lockedByRefereeName: refereeName || match.refereeName,
+      lockedByCourt: assignedCourt || match.court,
+      lockedAt: match.lockedAt || Date.now(),
+      lastUpdatedAt: Date.now(),
+    };
+    if (onLiveScoreUpdate) {
+      onLiveScoreUpdate(updated);
+    }
+  };
+
   const handleAddPointTeam1 = () => {
     recordHistory();
     const nextScore = score1 + 1;
@@ -117,6 +150,7 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
     if (nextScore >= targetPoints && nextScore - score2 >= 2) {
       sounds.playPoint();
     }
+    emitLiveUpdate(nextScore, score2, servingTeam, serverNumber);
   };
 
   const handleAddPointTeam2 = () => {
@@ -129,20 +163,25 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
     if (nextScore >= targetPoints && nextScore - score1 >= 2) {
       sounds.playPoint();
     }
+    emitLiveUpdate(score1, nextScore, servingTeam, serverNumber);
   };
 
   const handleMinusPointTeam1 = () => {
     if (score1 <= 0) return;
     recordHistory();
-    setScore1(score1 - 1);
+    const nextScore = score1 - 1;
+    setScore1(nextScore);
     triggerHaptic(30);
+    emitLiveUpdate(nextScore, score2, servingTeam, serverNumber);
   };
 
   const handleMinusPointTeam2 = () => {
     if (score2 <= 0) return;
     recordHistory();
-    setScore2(score2 - 1);
+    const nextScore = score2 - 1;
+    setScore2(nextScore);
     triggerHaptic(30);
+    emitLiveUpdate(score1, nextScore, servingTeam, serverNumber);
   };
 
   const handleUndo = () => {
@@ -154,25 +193,53 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
     setServerNumber(last.sNum);
     setHistory((prev) => prev.slice(0, prev.length - 1));
     triggerHaptic(35);
+    emitLiveUpdate(last.s1, last.s2, last.serving, last.sNum);
   };
 
   // Toggle side out / server 1 or 2
   const handleSideOut = () => {
     recordHistory();
     triggerHaptic(40);
+    let nextServerNumber: 1 | 2 = 1;
+    let nextServingTeam: 'team1' | 'team2' = servingTeam;
     if (serverNumber === 1) {
-      setServerNumber(2);
+      nextServerNumber = 2;
     } else {
-      setServerNumber(1);
-      setServingTeam(servingTeam === 'team1' ? 'team2' : 'team1');
+      nextServerNumber = 1;
+      nextServingTeam = servingTeam === 'team1' ? 'team2' : 'team1';
     }
+    setServerNumber(nextServerNumber);
+    setServingTeam(nextServingTeam);
     sounds.playHit();
+    emitLiveUpdate(score1, score2, nextServingTeam, nextServerNumber);
   };
 
   // Swap display sides
   const handleSwapSides = () => {
     triggerHaptic(30);
     setIsSwapped(!isSwapped);
+  };
+
+  // Exit and release match lock so other referees can view / enter if needed
+  const handleExitAndRelease = () => {
+    const updatedMatch: Match = {
+      ...match,
+      score1,
+      score2,
+      status: score1 > 0 || score2 > 0 ? 'live' : match.status,
+      serverNumber,
+      servingTeamId: servingTeam === 'team1' ? match.team1Id : match.team2Id,
+      refereeNotes,
+      refereeName: refereeName || match.refereeName,
+      lockedByRefereeName: undefined,
+      lockedByCourt: undefined,
+      lockedAt: undefined,
+      lastUpdatedAt: Date.now(),
+    };
+    if (onReleaseLock) {
+      onReleaseLock(updatedMatch);
+    }
+    onClose();
   };
 
   // Finish Match
@@ -190,6 +257,10 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
       servingTeamId: servingTeam === 'team1' ? match.team1Id : match.team2Id,
       refereeNotes,
       refereeName: refereeName || match.refereeName,
+      lockedByRefereeName: undefined,
+      lockedByCourt: undefined,
+      lockedAt: undefined,
+      lastUpdatedAt: Date.now(),
     };
 
     sounds.playWhistle();
@@ -201,19 +272,7 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
 
   // Save intermediate state (Live)
   const handleSaveDraft = () => {
-    const updatedMatch: Match = {
-      ...match,
-      score1,
-      score2,
-      status,
-      serverNumber,
-      servingTeamId: servingTeam === 'team1' ? match.team1Id : match.team2Id,
-      refereeNotes,
-      refereeName: refereeName || match.refereeName,
-    };
-    triggerHaptic(30);
-    onSaveMatch(updatedMatch);
-    onClose();
+    handleExitAndRelease();
   };
 
   // Calculated serving call format: ServingScore - ReceivingScore - ServerNumber (e.g. 4 - 3 - 2)
@@ -256,11 +315,23 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
             </button>
 
             <button
-              onClick={onClose}
+              onClick={handleExitAndRelease}
+              title="Lưu tạm & Thoát"
               className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
+          </div>
+        </div>
+
+        {/* Live Broadcast & Lock Indicator */}
+        <div className="bg-sky-950/80 border-b border-sky-800/40 px-3.5 py-1 flex items-center justify-between text-[11px] shrink-0">
+          <div className="flex items-center gap-1.5 text-sky-200">
+            <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse shrink-0" />
+            <span className="truncate">Đang phát trực tiếp từng điểm lên <strong>Lịch thi đấu</strong></span>
+          </div>
+          <div className="text-[10px] text-amber-300 font-bold bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30 shrink-0">
+            🔒 Khóa độc quyền: {refereeName || match.refereeName || 'Trọng tài'}
           </div>
         </div>
 
