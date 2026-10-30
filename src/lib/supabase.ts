@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Match, Team, TournamentConfig, RefereeAccount } from '../types/tournament';
+import { generateInitialMatches } from '../data/initialTournamentData';
 
 const STORAGE_KEY_URL = 'pickleball_supabase_url';
 const STORAGE_KEY_ANON_KEY = 'pickleball_supabase_anon_key';
@@ -208,30 +209,38 @@ export async function fetchMatchesFromSupabase(): Promise<Match[] | null> {
     const { data, error } = await client.from('matches').select('*').order('match_number', { ascending: true });
     if (error || !data || data.length === 0) return null;
 
-    return data.map((d) => ({
-      id: d.id,
-      stage: d.stage,
-      groupId: d.group_id,
-      roundName: d.round_name,
-      matchNumber: d.match_number,
-      court: d.court,
-      startTime: d.start_time,
-      team1Id: d.team1_id,
-      team2Id: d.team2_id,
-      score1: d.score1 ?? 0,
-      score2: d.score2 ?? 0,
-      targetPoints: 11,
-      status: d.status || 'pending',
-      winnerId: d.winner_id,
-      serverNumber: d.server_number || 1,
-      servingTeamId: d.serving_team_id,
-      history: d.history || [],
-      refereeNotes: d.referee_notes,
-      refereeName: d.referee_name,
-      lockedByRefereeName: d.locked_by_referee_name,
-      lockedByCourt: d.locked_by_court,
-      lockedAt: d.locked_at ? new Date(d.locked_at).getTime() : undefined,
-    }));
+    const initial = generateInitialMatches();
+    const initialMap = new Map(initial.map((m) => [m.id, m]));
+
+    return data.map((d) => {
+      const initMatch = initialMap.get(d.id);
+      return {
+        id: d.id,
+        stage: d.stage,
+        groupId: d.group_id,
+        roundName: d.round_name,
+        matchNumber: d.match_number,
+        court: d.court,
+        startTime: d.start_time,
+        team1Id: d.team1_id || '',
+        team2Id: d.team2_id || '',
+        team1Placeholder: initMatch?.team1Placeholder,
+        team2Placeholder: initMatch?.team2Placeholder,
+        score1: d.score1 ?? 0,
+        score2: d.score2 ?? 0,
+        targetPoints: 11,
+        status: d.status || 'pending',
+        winnerId: d.winner_id,
+        serverNumber: d.server_number || 1,
+        servingTeamId: d.serving_team_id,
+        history: d.history || [],
+        refereeNotes: d.referee_notes,
+        refereeName: d.referee_name,
+        lockedByRefereeName: d.locked_by_referee_name,
+        lockedByCourt: d.locked_by_court,
+        lockedAt: d.locked_at ? new Date(d.locked_at).getTime() : undefined,
+      };
+    });
   } catch (e) {
     console.warn('Fetch from Supabase failed:', e);
     return null;
@@ -251,16 +260,20 @@ export async function syncAllMatchesToSupabase(matches: Match[]): Promise<boolea
       match_number: m.matchNumber,
       court: m.court,
       start_time: m.startTime || null,
-      team1_id: m.team1Id,
-      team2_id: m.team2Id,
-      score1: m.score1,
-      score2: m.score2,
-      status: m.status,
+      team1_id: m.team1Id || m.team1Placeholder || '',
+      team2_id: m.team2Id || m.team2Placeholder || '',
+      score1: m.score1 ?? 0,
+      score2: m.score2 ?? 0,
+      status: m.status || 'pending',
       winner_id: m.winnerId || null,
       server_number: m.serverNumber || 1,
       serving_team_id: m.servingTeamId || null,
       history: m.history || [],
       referee_notes: m.refereeNotes || null,
+      referee_name: m.refereeName || null,
+      locked_by_referee_name: m.lockedByRefereeName || null,
+      locked_by_court: m.lockedByCourt || null,
+      locked_at: m.lockedAt ? new Date(m.lockedAt).toISOString() : null,
       updated_at: new Date().toISOString(),
     }));
 
@@ -273,5 +286,52 @@ export async function syncAllMatchesToSupabase(matches: Match[]): Promise<boolea
   } catch (e) {
     console.warn('Bulk sync exception:', e);
     return false;
+  }
+}
+
+export async function resetTournamentInSupabase(
+  freshMatches: Match[]
+): Promise<{ success: boolean; message?: string }> {
+  const client = getSupabaseClient();
+  if (!client) {
+    return { success: false, message: 'Chưa kết nối Supabase Cloud. Dữ liệu đã reset trên máy này (LocalStorage).' };
+  }
+
+  try {
+    const records = freshMatches.map((m) => ({
+      id: m.id,
+      stage: m.stage,
+      group_id: m.groupId || null,
+      round_name: m.roundName,
+      match_number: m.matchNumber,
+      court: m.court,
+      start_time: m.startTime || null,
+      team1_id: m.team1Id || m.team1Placeholder || '',
+      team2_id: m.team2Id || m.team2Placeholder || '',
+      score1: 0,
+      score2: 0,
+      status: 'pending',
+      winner_id: null,
+      server_number: 1,
+      serving_team_id: null,
+      history: [],
+      referee_notes: null,
+      referee_name: null,
+      locked_by_referee_name: null,
+      locked_by_court: null,
+      locked_at: null,
+      updated_at: new Date().toISOString(),
+    }));
+
+    const { error } = await client.from('matches').upsert(records);
+    if (error) {
+      console.warn('Supabase reset error:', error);
+      return { success: false, message: error.message };
+    }
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn('Exception during Supabase reset:', msg);
+    return { success: false, message: msg };
   }
 }

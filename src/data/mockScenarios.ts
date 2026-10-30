@@ -75,11 +75,11 @@ export function getFullCompletedScenario(): Match[] {
   // B3 (A. Mười - Lê Phương): 1 thắng 2 bại (vs B4: 11-7) -> 2đ, Hiệu số -3 (Hạng 3)
   // B4 (Hà - Thuỷ Hoàng): 0 thắng 3 bại -> 0đ, Hiệu số -14 (Hạng 4)
   setScore('match_g_b_7', 11, 8, 'Sân 3');  // B1 vs B2
-  setScore('match_g_b_8', 11, 7, 'Sân 4');  // B3 vs B4
+  setScore('match_g_b_8', 11, 7, 'Sân 3');  // B3 vs B4
   setScore('match_g_b_9', 11, 9, 'Sân 3');  // B1 vs B3
-  setScore('match_g_b_10', 11, 6, 'Sân 4'); // B2 vs B4
+  setScore('match_g_b_10', 11, 6, 'Sân 3'); // B2 vs B4
   setScore('match_g_b_11', 11, 4, 'Sân 3'); // B1 vs B4
-  setScore('match_g_b_12', 11, 8, 'Sân 4'); // B2 vs B3
+  setScore('match_g_b_12', 11, 8, 'Sân 3'); // B2 vs B3
 
   // --- BẢNG C ---
   // C1 (Tôn - Tuyết): 3 thắng (vs C2: 11-9, vs C3: 11-8, vs C4: 11-5) -> 6đ, Hiệu số +11 (Nhất C)

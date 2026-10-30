@@ -16,6 +16,7 @@ import {
   saveLocalReferees,
   syncMatchToSupabase,
   syncAllMatchesToSupabase,
+  resetTournamentInSupabase,
   fetchMatchesFromSupabase,
   getSupabaseClient
 } from './lib/supabase';
@@ -58,10 +59,10 @@ export default function App() {
 
   const [matches, setMatches] = useState<Match[]>(() => {
     const local = loadLocalMatches();
-    if (local && local.length > 0 && local.some((m) => m.status === 'completed')) {
+    if (local && local.length > 0) {
       return local;
     }
-    // Default to fully populated tournament from group stage to final as requested!
+    // Default to fully populated tournament from group stage to final if first visit
     return getFullCompletedScenario();
   });
 
@@ -235,7 +236,7 @@ export default function App() {
     localStorage.removeItem('pickleball_admin_auth');
   };
 
-  const handleResetTournamentData = () => {
+  const handleResetTournamentData = async (): Promise<{ success: boolean; message?: string }> => {
     const freshMatches = generateInitialMatches();
     const freshTeams = INITIAL_TEAMS;
     syncManager.clearAllLocks();
@@ -245,7 +246,8 @@ export default function App() {
     saveLocalMatches(freshMatches);
     saveLocalTeams(freshTeams);
     syncManager.broadcastBatch(freshMatches);
-    syncAllMatchesToSupabase(freshMatches).catch(() => {});
+    const res = await resetTournamentInSupabase(freshMatches);
+    return res;
   };
 
   // Explicit re-calculation trigger
@@ -256,10 +258,12 @@ export default function App() {
   };
 
   // Quick referee open from anywhere
-  const handleSelectScenario = (type: ScenarioType, newMatches: Match[]) => {
+  const handleSelectScenario = async (type: ScenarioType, newMatches: Match[]) => {
     setCurrentScenario(type);
     setMatches(newMatches);
     saveLocalMatches(newMatches);
+    syncManager.broadcastBatch(newMatches);
+    await syncAllMatchesToSupabase(newMatches);
   };
 
   const handleOpenRefereeForNextMatch = () => {
@@ -290,6 +294,7 @@ export default function App() {
         setSoundEnabled={setSoundEnabled}
         isAdmin={isAdminLoggedIn}
         onOpenAdminModal={() => setShowAdminModal(true)}
+        onOpenRulesModal={() => setActiveTab('rules')}
       />
 
       {/* Interactive Scenario / Test Data Picker — ONLY VISIBLE WHEN ADMIN LOGGED IN */}

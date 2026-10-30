@@ -96,13 +96,20 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
   };
 
   const targetPoints = match.targetPoints || 11;
+  const isGroupStage = match.stage === 'group';
+  const requiresWinByTwo = !isGroupStage; // Vòng bảng: 1 set chạm 11 không cần cách 2. Knockout: cần cách 2 điểm!
 
-  // Check if someone reached winning condition (>= targetPoints and lead >= 2)
-  const isMatchPointTeam1 = score1 >= targetPoints - 1 && score1 > score2;
-  const isMatchPointTeam2 = score2 >= targetPoints - 1 && score2 > score1;
-  const hasWinner =
-    (score1 >= targetPoints && score1 - score2 >= 2) ||
-    (score2 >= targetPoints && score2 - score1 >= 2);
+  // Check if someone reached winning condition
+  const isMatchPointTeam1 = requiresWinByTwo
+    ? (score1 >= targetPoints - 1 && score1 > score2)
+    : (score1 === targetPoints - 1 && score2 < targetPoints);
+  const isMatchPointTeam2 = requiresWinByTwo
+    ? (score2 >= targetPoints - 1 && score2 > score1)
+    : (score2 === targetPoints - 1 && score1 < targetPoints);
+
+  const hasWinner = requiresWinByTwo
+    ? ((score1 >= targetPoints && score1 - score2 >= 2) || (score2 >= targetPoints && score2 - score1 >= 2))
+    : (score1 >= targetPoints || score2 >= targetPoints);
   const winner = score1 > score2 ? 'team1' : 'team2';
 
   // Record point change for undo
@@ -147,7 +154,11 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
     triggerHaptic(50);
     sounds.playHit();
 
-    if (nextScore >= targetPoints && nextScore - score2 >= 2) {
+    const isWin = requiresWinByTwo
+      ? (nextScore >= targetPoints && nextScore - score2 >= 2)
+      : (nextScore >= targetPoints);
+
+    if (isWin) {
       sounds.playPoint();
     }
     emitLiveUpdate(nextScore, score2, servingTeam, serverNumber);
@@ -160,7 +171,11 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
     triggerHaptic(50);
     sounds.playHit();
 
-    if (nextScore >= targetPoints && nextScore - score1 >= 2) {
+    const isWin = requiresWinByTwo
+      ? (nextScore >= targetPoints && nextScore - score1 >= 2)
+      : (nextScore >= targetPoints);
+
+    if (isWin) {
       sounds.playPoint();
     }
     emitLiveUpdate(score1, nextScore, servingTeam, serverNumber);
@@ -296,6 +311,13 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
               <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-400 text-slate-950 uppercase shrink-0 font-mono">
                 {match.court}
               </span>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                isGroupStage
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                  : 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
+              }`}>
+                {isGroupStage ? 'Chạm 11 (Không cách 2)' : `Chạm ${targetPoints} (Cách 2)`}
+              </span>
               {(refereeName || match.refereeName) && (
                 <span className="text-[10px] text-amber-300 font-semibold truncate hidden sm:inline">
                   • TT: {refereeName || match.refereeName}
@@ -360,7 +382,11 @@ export const RefereeScorerModal: React.FC<RefereeScorerModalProps> = ({
         {/* Compact Match Point or Winner Alert Banner */}
         {(isMatchPointTeam1 || isMatchPointTeam2) && !hasWinner && (
           <div className="bg-rose-600 text-white text-center py-1 px-2 font-black text-[10px] sm:text-xs uppercase tracking-wider animate-pulse shrink-0">
-            ★ MATCH POINT — {isMatchPointTeam1 ? team1Name : team2Name} ĐANG CÓ ĐIỂM THẮNG TRẬN ★
+            {isMatchPointTeam1 && isMatchPointTeam2 ? (
+              <span>★ ĐIỂM QUYẾT ĐỊNH (10 - 10) — ĐỘI NÀO GHI ĐIỂM TIẾP THEO SẼ THẮNG TRẬN (CHẠM 11) ★</span>
+            ) : (
+              <span>★ MATCH POINT — {isMatchPointTeam1 ? team1Name : team2Name} ĐANG CÓ ĐIỂM THẮNG TRẬN ★</span>
+            )}
           </div>
         )}
 

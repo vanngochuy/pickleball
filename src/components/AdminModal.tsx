@@ -33,7 +33,7 @@ interface AdminModalProps {
   isAdmin: boolean;
   onLogin: (pass: string) => boolean;
   onLogout: () => void;
-  onResetTournament: () => void;
+  onResetTournament: () => Promise<{ success: boolean; message?: string } | void> | void;
   currentScenario: ScenarioType;
   onSelectScenario: (scenario: ScenarioType, newMatches: Match[]) => void;
   onOpenTestBench: () => void;
@@ -55,6 +55,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isConfirmingReset, setIsConfirmingReset] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [resetSuccessMessage, setResetSuccessMessage] = useState('');
 
   if (!isOpen) return null;
@@ -77,14 +78,27 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     }
   };
 
-  const handleExecuteReset = () => {
-    sounds.playFanfare();
-    onResetTournament();
-    setIsConfirmingReset(false);
-    setResetSuccessMessage('Đã reset toàn bộ giải đấu về trạng thái ban đầu (0 - 0) sạch sẽ cho ngày 31/10/2026!');
-    setTimeout(() => {
-      setResetSuccessMessage('');
-    }, 4000);
+  const handleExecuteReset = async () => {
+    setIsResetting(true);
+    sounds.playHit();
+    try {
+      const res = await onResetTournament();
+      sounds.playFanfare();
+      setIsConfirmingReset(false);
+      if (res && typeof res === 'object' && 'success' in res && !res.success) {
+        setResetSuccessMessage(`Đã reset về 0-0 trên trình duyệt! ${res.message ? `(${res.message})` : ''}`);
+      } else {
+        setResetSuccessMessage('Đã reset toàn bộ giải đấu về 0 - 0 và lưu thành công lên Supabase & Bộ nhớ máy! Khi refresh web dữ liệu vẫn được bảo toàn.');
+      }
+    } catch {
+      setIsConfirmingReset(false);
+      setResetSuccessMessage('Đã reset về 0-0 trên trình duyệt (LocalStorage).');
+    } finally {
+      setIsResetting(false);
+      setTimeout(() => {
+        setResetSuccessMessage('');
+      }, 5000);
+    }
   };
 
   const handleApplyScenario = (type: ScenarioType) => {
@@ -284,17 +298,30 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     </p>
                     <div className="flex items-center justify-end gap-2">
                       <button
+                        type="button"
                         onClick={() => setIsConfirmingReset(false)}
-                        className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
+                        disabled={isResetting}
+                        className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors disabled:opacity-50"
                       >
                         Hủy Bỏ
                       </button>
                       <button
+                        type="button"
                         onClick={handleExecuteReset}
-                        className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-sm transition-all active:scale-95 flex items-center gap-1.5"
+                        disabled={isResetting}
+                        className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-sm transition-all active:scale-95 flex items-center gap-1.5 disabled:opacity-60"
                       >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        <span>Đồng ý Reset Ngay</span>
+                        {isResetting ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Đang Lưu Lên Supabase...</span>
+                          </>
+                        ) : (
+                          <>
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Đồng ý Reset Ngay</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>

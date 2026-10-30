@@ -322,7 +322,6 @@ export const RefereeLoginModal: React.FC<RefereeLoginModalProps> = ({
                           <option value="Sân 1">Sân 1</option>
                           <option value="Sân 2">Sân 2</option>
                           <option value="Sân 3">Sân 3</option>
-                          <option value="Sân 4">Sân 4</option>
                           <option value="Tất cả">Tất cả</option>
                         </select>
                       </div>
@@ -424,8 +423,8 @@ export const RefereeLoginModal: React.FC<RefereeLoginModalProps> = ({
               <label className="block text-xs font-bold text-slate-800">
                 Sân Thi Đấu Trọng Tài Đang Trực:
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                {['Tất cả', 'Sân 1', 'Sân 2', 'Sân 3', 'Sân 4'].map((court) => (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {['Tất cả', 'Sân 1', 'Sân 2', 'Sân 3'].map((court) => (
                   <button
                     key={court}
                     type="button"

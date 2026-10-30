@@ -112,12 +112,12 @@ export function generateInitialMatches(): Match[] {
 
   // --- BẢNG B (4 teams round-robin = 6 matches) ---
   const groupBMatches = [
-    { team1: 'team_b1', team2: 'team_b2', round: 'Lượt 1', time: '08:15', court: 'Sân 3' },
-    { team1: 'team_b3', team2: 'team_b4', round: 'Lượt 1', time: '08:15', court: 'Sân 4' },
-    { team1: 'team_b1', team2: 'team_b3', round: 'Lượt 2', time: '09:00', court: 'Sân 3' },
-    { team1: 'team_b2', team2: 'team_b4', round: 'Lượt 2', time: '09:00', court: 'Sân 4' },
-    { team1: 'team_b1', team2: 'team_b4', round: 'Lượt 3', time: '09:45', court: 'Sân 3' },
-    { team1: 'team_b2', team2: 'team_b3', round: 'Lượt 3', time: '09:45', court: 'Sân 4' },
+    { team1: 'team_b1', team2: 'team_b2', round: 'Lượt 1', time: '08:00', court: 'Sân 3' },
+    { team1: 'team_b3', team2: 'team_b4', round: 'Lượt 1', time: '08:25', court: 'Sân 3' },
+    { team1: 'team_b1', team2: 'team_b3', round: 'Lượt 2', time: '08:50', court: 'Sân 3' },
+    { team1: 'team_b2', team2: 'team_b4', round: 'Lượt 2', time: '09:15', court: 'Sân 3' },
+    { team1: 'team_b1', team2: 'team_b4', round: 'Lượt 3', time: '09:40', court: 'Sân 3' },
+    { team1: 'team_b2', team2: 'team_b3', round: 'Lượt 3', time: '10:05', court: 'Sân 3' },
   ];
 
   groupBMatches.forEach((m) => {
@@ -204,7 +204,7 @@ export function generateInitialMatches(): Match[] {
     { id: 'match_qf_1', roundName: 'Tứ kết 1', p1: 'Nhất Bảng A', p2: 'Nhì Bảng B', court: 'Sân 1', time: '10:45' },
     { id: 'match_qf_2', roundName: 'Tứ kết 2', p1: 'Nhất Bảng C', p2: 'Nhì Bảng D', court: 'Sân 2', time: '10:45' },
     { id: 'match_qf_3', roundName: 'Tứ kết 3', p1: 'Nhất Bảng B', p2: 'Nhì Bảng A', court: 'Sân 3', time: '10:45' },
-    { id: 'match_qf_4', roundName: 'Tứ kết 4', p1: 'Nhất Bảng D', p2: 'Nhì Bảng C', court: 'Sân 4', time: '10:45' },
+    { id: 'match_qf_4', roundName: 'Tứ kết 4', p1: 'Nhất Bảng D', p2: 'Nhì Bảng C', court: 'Sân 1', time: '11:15' },
   ];
 
   qfMatches.forEach((qf) => {

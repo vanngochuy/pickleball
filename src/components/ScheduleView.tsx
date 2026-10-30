@@ -127,7 +127,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               LỊCH THI ĐẤU TOÀN GIẢI
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-              21 trận vòng bảng + 4 trận Tứ kết + 2 Bán kết + Tranh Hạng 3 & Chung Kết
+              Toàn bộ lịch thi đấu các bảng đấu & vòng Knockout tranh cúp
             </p>
           </div>
 
@@ -149,9 +149,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
           {/* Stage Filter */}
           <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
             <button
-              onClick={() => setStageFilter('all')}
+              onClick={() => {
+                setStageFilter('all');
+                setGroupFilter('all');
+              }}
               className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${
-                stageFilter === 'all'
+                stageFilter === 'all' && groupFilter === 'all'
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
@@ -159,55 +162,46 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               Tất cả các vòng
             </button>
             <button
-              onClick={() => setStageFilter('group')}
-              className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${
-                stageFilter === 'group'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Vòng Bảng (21 trận)
-            </button>
-            <button
-              onClick={() => setStageFilter('knockout')}
+              onClick={() => {
+                setStageFilter('knockout');
+                setGroupFilter('all');
+              }}
               className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${
                 stageFilter === 'knockout'
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Vòng Knockout (8 trận)
+              Vòng Knockout
             </button>
           </div>
 
           {/* Group Filter */}
-          {stageFilter !== 'knockout' && (
-            <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
-              <button
-                onClick={() => setGroupFilter('all')}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors ${
-                  groupFilter === 'all'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600'
-                }`}
-              >
-                Mọi bảng
-              </button>
-              {(['A', 'B', 'C', 'D'] as GroupLetter[]).map((grp) => (
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
+            {(['A', 'B', 'C', 'D'] as GroupLetter[]).map((grp) => {
+              const isSelected = stageFilter !== 'knockout' && groupFilter === grp;
+              return (
                 <button
                   key={grp}
-                  onClick={() => setGroupFilter(grp)}
+                  onClick={() => {
+                    if (isSelected) {
+                      setGroupFilter('all');
+                    } else {
+                      setStageFilter('all');
+                      setGroupFilter(grp);
+                    }
+                  }}
                   className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors ${
-                    groupFilter === grp
+                    isSelected
                       ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-600'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Bảng {grp}
                 </button>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
 
           {/* Status Filter */}
           <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl ml-auto">
@@ -285,7 +279,11 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                           <span>TT: {lm.lockedByRefereeName}</span>
                         </span>
                       ) : (
-                        <span>Chạm {lm.targetPoints} điểm</span>
+                        <span>
+                          {lm.stage === 'group'
+                            ? 'Chạm 11 (Không cách 2)'
+                            : `Chạm ${lm.targetPoints} (Cách 2)`}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -482,8 +480,10 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                   {/* Right Column: Referee Scorer CTA (3 cols) */}
                   <div className="md:col-span-3 flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-2">
                     <div className="text-right">
-                      <span className="text-[11px] text-slate-400 block">
-                        Đến {m.targetPoints} điểm {m.targetPoints === 11 ? '(cách 2)' : ''}
+                      <span className="text-[11px] text-slate-400 block font-medium">
+                        {m.stage === 'group'
+                          ? 'Chạm 11 điểm (Không cách 2)'
+                          : `Chạm ${m.targetPoints} điểm (cách 2)`}
                       </span>
                     </div>
 

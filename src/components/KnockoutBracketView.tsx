@@ -202,7 +202,7 @@ export const KnockoutBracketView: React.FC<KnockoutBracketViewProps> = ({
 
                   <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between">
                     <span className="text-[10px] font-semibold text-slate-500">
-                      Chạm {m.targetPoints} điểm
+                      Chạm {m.targetPoints} điểm (cách 2)
                     </span>
                     <button
                       onClick={() => onOpenMatchScorer(m)}

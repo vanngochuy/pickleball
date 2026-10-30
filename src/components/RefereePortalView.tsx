@@ -62,7 +62,7 @@ export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
     return t ? t.code : '';
   };
 
-  const courts = ['Tất cả', 'Sân 1', 'Sân 2', 'Sân 3', 'Sân 4'];
+  const courts = ['Tất cả', 'Sân 1', 'Sân 2', 'Sân 3'];
 
   const courtMatches = matches.filter((m) => {
     if (assignedCourt === 'Tất cả') return true;
@@ -196,7 +196,9 @@ export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
                   {getTeamName(activeLiveMatch.team2Id, activeLiveMatch.team2Placeholder)} ({activeLiveMatch.score2})
                 </div>
                 <p className="text-xs font-semibold text-slate-800">
-                  Chạm {activeLiveMatch.targetPoints} điểm · Đang có lượt chấm trực tiếp
+                  {activeLiveMatch.stage === 'group'
+                    ? 'Chạm 11 điểm (Không cách 2) · Đang chấm trực tiếp'
+                    : `Chạm ${activeLiveMatch.targetPoints} điểm (Cách 2) · Đang chấm trực tiếp`}
                 </p>
               </div>
             </div>
@@ -222,7 +224,7 @@ export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
               {getTeamName(nextMatch.team2Id, nextMatch.team2Placeholder)}
             </div>
             <div className="text-xs text-slate-500">
-              {nextMatch.roundName} · {nextMatch.court} · Chạm {nextMatch.targetPoints} điểm
+              {nextMatch.roundName} · {nextMatch.court} · {nextMatch.stage === 'group' ? 'Chạm 11 điểm (Không cách 2)' : `Chạm ${nextMatch.targetPoints} điểm (Cách 2)`}
             </div>
           </div>
 
