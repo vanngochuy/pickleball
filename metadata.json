@@ -1,0 +1,8 @@
+{
+  "name": "Giải Pickleball Tập Đoàn Biển Lần IV",
+  "description": "Hệ thống quản lý, lịch thi đấu, bảng xếp hạng và chấm điểm trọng tài Giải Pickleball Tập Đoàn Biển",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

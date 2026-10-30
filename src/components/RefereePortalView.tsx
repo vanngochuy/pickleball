@@ -1,0 +1,251 @@
+import React from 'react';
+import { Match, Team } from '../types/tournament';
+import { ShieldCheck, PlayCircle, Clock, CheckCircle2, UserCheck, Flame, Filter } from 'lucide-react';
+import { GROUP_CONFIGS } from '../data/initialTournamentData';
+
+interface RefereePortalViewProps {
+  matches: Match[];
+  teams: Team[];
+  onOpenMatchScorer: (match: Match) => void;
+  assignedCourt: string;
+  setAssignedCourt: (court: string) => void;
+  refereeName: string;
+  onOpenRefereeSettings: () => void;
+}
+
+export const RefereePortalView: React.FC<RefereePortalViewProps> = ({
+  matches,
+  teams,
+  onOpenMatchScorer,
+  assignedCourt,
+  setAssignedCourt,
+  refereeName,
+  onOpenRefereeSettings,
+}) => {
+  const getTeamName = (teamId: string, placeholder?: string) => {
+    if (!teamId) return placeholder || 'Chờ kết quả';
+    const t = teams.find((item) => item.id === teamId);
+    return t ? t.name : placeholder || 'Chờ kết quả';
+  };
+
+  const getTeamCode = (teamId: string) => {
+    if (!teamId) return '';
+    const t = teams.find((item) => item.id === teamId);
+    return t ? t.code : '';
+  };
+
+  const courts = ['Tất cả', 'Sân 1', 'Sân 2', 'Sân 3', 'Sân 4'];
+
+  const courtMatches = matches.filter((m) => {
+    if (assignedCourt === 'Tất cả') return true;
+    return m.court.toLowerCase().includes(assignedCourt.toLowerCase());
+  });
+
+  const activeLiveMatch = courtMatches.find((m) => m.status === 'live');
+  const pendingMatches = courtMatches.filter((m) => m.status === 'pending');
+  const nextMatch = activeLiveMatch ? pendingMatches[0] : pendingMatches[0];
+  const otherPendingMatches = activeLiveMatch
+    ? pendingMatches
+    : pendingMatches.slice(1);
+  const completedMatches = courtMatches.filter((m) => m.status === 'completed');
+
+  return (
+    <div className="space-y-6">
+      {/* Header Bar */}
+      <div className="bg-slate-900 text-white p-5 rounded-3xl border border-slate-800 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shadow-md">
+            <ShieldCheck className="w-7 h-7" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-black font-display tracking-tight uppercase">
+                BÀN ĐIỀU HÀNH TRỌNG TÀI
+              </h2>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-slate-950 uppercase">
+                {assignedCourt}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+              <span>Trọng tài: <strong className="text-white">{refereeName || 'Chưa đặt tên'}</strong></span>
+              <span>·</span>
+              <button
+                onClick={onOpenRefereeSettings}
+                className="text-amber-400 hover:underline font-semibold"
+              >
+                Cài đặt & Mã PIN
+              </button>
+            </p>
+          </div>
+        </div>
+
+        {/* Court Filter Tabs */}
+        <div className="flex items-center gap-1.5 p-1 bg-slate-800 rounded-2xl self-start sm:self-auto overflow-x-auto max-w-full">
+          {courts.map((court) => (
+            <button
+              key={court}
+              onClick={() => setAssignedCourt(court)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-xl whitespace-nowrap transition-all ${
+                assignedCourt === court
+                  ? 'bg-amber-400 text-slate-950 shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              {court}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Featured: Current Active Match on this Court */}
+      {activeLiveMatch ? (
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 p-6 sm:p-7 text-slate-950 shadow-lg border-2 border-amber-300">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="space-y-2 w-full md:w-auto">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-slate-950 text-amber-300 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 animate-pulse">
+                  <Flame className="w-4 h-4 text-rose-500 fill-rose-500" />
+                  ĐANG THI ĐẤU TRÊN {activeLiveMatch.court}
+                </span>
+                <span className="font-mono text-xs font-bold text-slate-800">
+                  {activeLiveMatch.roundName} · Trận #{activeLiveMatch.matchNumber}
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-xl sm:text-2xl font-black font-display tracking-tight">
+                  {getTeamName(activeLiveMatch.team1Id, activeLiveMatch.team1Placeholder)} ({activeLiveMatch.score1})
+                  <span className="text-slate-700 mx-2">vs</span>
+                  {getTeamName(activeLiveMatch.team2Id, activeLiveMatch.team2Placeholder)} ({activeLiveMatch.score2})
+                </div>
+                <p className="text-xs font-semibold text-slate-800">
+                  Chạm {activeLiveMatch.targetPoints} điểm · Đang có lượt chấm trực tiếp
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => onOpenMatchScorer(activeLiveMatch)}
+              className="w-full md:w-auto px-6 py-4 rounded-2xl bg-slate-950 hover:bg-slate-900 text-amber-300 font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-xl transition-all active:scale-95"
+            >
+              <PlayCircle className="w-6 h-6 text-amber-400" />
+              <span>VÀO BẢNG ĐIỆN TỬ CHẤM ĐIỂM</span>
+            </button>
+          </div>
+        </div>
+      ) : nextMatch ? (
+        <div className="rounded-3xl bg-white border-2 border-sky-300 p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="text-[11px] font-bold text-sky-700 uppercase tracking-wider flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5" />
+              Trận Kế Tiếp Trên {nextMatch.court} ({nextMatch.startTime || '08:15'})
+            </div>
+            <div className="text-lg sm:text-xl font-black text-slate-900 font-display">
+              {getTeamName(nextMatch.team1Id, nextMatch.team1Placeholder)} vs{' '}
+              {getTeamName(nextMatch.team2Id, nextMatch.team2Placeholder)}
+            </div>
+            <div className="text-xs text-slate-500">
+              {nextMatch.roundName} · {nextMatch.court} · Chạm {nextMatch.targetPoints} điểm
+            </div>
+          </div>
+
+          <button
+            onClick={() => onOpenMatchScorer(nextMatch)}
+            className="w-full md:w-auto px-5 py-3 rounded-2xl bg-sky-600 hover:bg-sky-500 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md transition-all active:scale-95"
+          >
+            <PlayCircle className="w-5 h-5" />
+            <span>BẮT ĐẦU CHẤM TRẬN NÀY</span>
+          </button>
+        </div>
+      ) : null}
+
+      {/* Queue of Matches on this Court */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Pending Matches */}
+        <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-3">
+          <h3 className="font-black text-sm uppercase text-slate-800 tracking-wide flex items-center justify-between">
+            <span>Danh Sách Chờ Đấu ({pendingMatches.length})</span>
+            <span className="text-xs text-slate-400 font-normal">Sắp xếp theo giờ</span>
+          </h3>
+
+          <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+            {pendingMatches.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400">
+                Tất cả các trận trên sân này đã hoàn tất!
+              </div>
+            ) : (
+              pendingMatches.map((m) => (
+                <div
+                  key={m.id}
+                  className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between gap-3 hover:border-slate-300 transition-colors"
+                >
+                  <div className="truncate">
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+                      <span>#{m.matchNumber}</span>
+                      <span>·</span>
+                      <span>{m.startTime}</span>
+                      <span>·</span>
+                      <span className="font-bold text-sky-700">{m.court}</span>
+                    </div>
+                    <div className="font-bold text-xs sm:text-sm text-slate-900 truncate mt-0.5">
+                      {getTeamName(m.team1Id, m.team1Placeholder)} vs{' '}
+                      {getTeamName(m.team2Id, m.team2Placeholder)}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => onOpenMatchScorer(m)}
+                    className="px-3 py-1.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 shrink-0"
+                  >
+                    Chấm điểm
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Completed Matches on this Court */}
+        <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-3">
+          <h3 className="font-black text-sm uppercase text-slate-800 tracking-wide flex items-center justify-between">
+            <span>Đã Hoàn Tất ({completedMatches.length})</span>
+            <span className="text-xs text-slate-400 font-normal">Đã có kết quả</span>
+          </h3>
+
+          <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+            {completedMatches.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400">
+                Chưa có trận nào hoàn tất trên sân này.
+              </div>
+            ) : (
+              completedMatches.map((m) => (
+                <div
+                  key={m.id}
+                  className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between gap-3"
+                >
+                  <div className="truncate">
+                    <div className="text-[10px] text-slate-400 font-mono">
+                      #{m.matchNumber} · {m.roundName} · {m.court}
+                    </div>
+                    <div className="font-bold text-xs sm:text-sm text-slate-900 truncate mt-0.5 flex items-center gap-2">
+                      <span className="truncate">
+                        {getTeamName(m.team1Id, m.team1Placeholder)} ({m.score1}) - ({m.score2}) {getTeamName(m.team2Id, m.team2Placeholder)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => onOpenMatchScorer(m)}
+                    className="px-2.5 py-1 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition-colors shrink-0"
+                  >
+                    Sửa điểm
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
